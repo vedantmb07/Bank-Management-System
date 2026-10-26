@@ -45,7 +45,7 @@ const showToast = (message, type = 'success') => {
     if (type === 'info') icon = 'fa-info-circle';
 
     toast.innerHTML = `
-        <i class="fas ${icon}" style="font-size: 1.2rem; color: ${type === 'success' ? '#34d399' : type === 'error' ? '#fb7185' : '#38bdf8'};"></i>
+        <i class="fas ${icon}" style="font-size: 1.1rem; color: ${type === 'success' ? '#16a34a' : type === 'error' ? '#dc2626' : '#2563eb'};"></i>
         <div style="flex: 1; font-size: 0.88rem; font-weight: 500;">${message}</div>
     `;
 

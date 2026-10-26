@@ -152,11 +152,19 @@ exports.deleteCustomer = async (req, res) => {
             [id]
         );
 
-        if (balanceCheck[0].total_balance > 0) {
+        const totalRemaining = balanceCheck[0] ? parseFloat(balanceCheck[0].total_balance || 0) : 0;
+        if (totalRemaining > 0) {
             return res.status(400).json({
                 success: false,
-                message: `Cannot delete customer with active accounts containing funds (Remaining Balance: ₹${balanceCheck[0].total_balance}). Please withdraw or transfer funds first.`
+                message: `Cannot delete customer with active accounts containing funds (Remaining Balance: ₹${totalRemaining.toFixed(2)}). Please withdraw or transfer funds first.`
             });
+        }
+
+        // Retrieve customer accounts to safely remove transfer references if cascade is not present
+        const [accounts] = await pool.query('SELECT account_number FROM Accounts WHERE customer_id = ?', [id]);
+        if (accounts && accounts.length > 0) {
+            const accNums = accounts.map(a => a.account_number);
+            await pool.query('DELETE FROM Transfers WHERE sender_account IN (?) OR receiver_account IN (?)', [accNums, accNums]);
         }
 
         const [result] = await pool.query('DELETE FROM Customers WHERE customer_id = ?', [id]);

@@ -77,8 +77,8 @@ erDiagram
 
     TRANSFERS {
         bigint transfer_id PK "AUTO_INCREMENT"
-        bigint sender_account FK "REFERENCES Accounts(account_number)"
-        bigint receiver_account FK "REFERENCES Accounts(account_number)"
+        bigint sender_account FK "REFERENCES Accounts(account_number) ON DELETE CASCADE"
+        bigint receiver_account FK "REFERENCES Accounts(account_number) ON DELETE CASCADE"
         decimal amount "DECIMAL(15,2) NOT NULL"
         timestamp transfer_date "DEFAULT CURRENT_TIMESTAMP"
     }

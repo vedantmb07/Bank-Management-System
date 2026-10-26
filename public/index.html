@@ -372,6 +372,7 @@
                                 <button class="pill-btn account-filter-pill" data-type="CHECKING">Checking</button>
                                 <button class="pill-btn account-filter-pill" data-type="FIXED_DEPOSIT">Fixed Deposit</button>
                                 <button class="pill-btn account-filter-pill" data-status="FROZEN">Frozen</button>
+                                <button class="pill-btn account-filter-pill" data-status="CLOSED">Closed</button>
                             </div>
                         </div>
 
@@ -668,6 +669,47 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline" onclick="closeModal('customerDetailsModal')">Close</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 7. Edit Customer Modal -->
+    <div class="modal-overlay" id="editCustomerModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3><i class="fas fa-user-edit" style="color: #3b82f6;"></i> Edit Customer Profile</h3>
+                <button class="modal-close-btn" onclick="closeModal('editCustomerModal')">&times;</button>
+            </div>
+            <form id="editCustomerForm">
+                <input type="hidden" id="editCustId">
+                <div class="modal-body">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label for="editCustFirstName">First Name</label>
+                            <input type="text" id="editCustFirstName" class="form-control" placeholder="First Name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editCustLastName">Last Name</label>
+                            <input type="text" id="editCustLastName" class="form-control" placeholder="Last Name" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="editCustEmail">Email Address</label>
+                        <input type="email" id="editCustEmail" class="form-control" placeholder="name@example.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editCustPhone">Phone Number</label>
+                        <input type="tel" id="editCustPhone" class="form-control" placeholder="Phone Number" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editCustAddress">Residential Address</label>
+                        <textarea id="editCustAddress" class="form-control" rows="2" placeholder="Address"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('editCustomerModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Changes</button>
+                </div>
+            </form>
         </div>
     </div>
 

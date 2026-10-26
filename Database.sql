@@ -46,8 +46,8 @@ CREATE TABLE IF NOT EXISTS Transfers (
     receiver_account BIGINT NOT NULL,
     amount DECIMAL(15, 2) NOT NULL,
     transfer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (sender_account) REFERENCES Accounts(account_number),
-    FOREIGN KEY (receiver_account) REFERENCES Accounts(account_number)
+    FOREIGN KEY (sender_account) REFERENCES Accounts(account_number) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_account) REFERENCES Accounts(account_number) ON DELETE CASCADE
 );
 
 -- Trigger: Automatically record transaction on account balance update

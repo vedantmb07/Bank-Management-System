@@ -204,6 +204,11 @@ async function mockQuery(sql, params = []) {
         const limitParam = params[params.length - 1];
         if (typeof limitParam === 'number' && limitParam > 0) {
             results = results.slice(0, limitParam);
+        } else {
+            const limitMatch = q.match(/LIMIT\s+(\d+)/);
+            if (limitMatch) {
+                results = results.slice(0, parseInt(limitMatch[1], 10));
+            }
         }
 
         return [results];
@@ -287,6 +292,69 @@ async function mockQuery(sql, params = []) {
         return [{ insertId: newCust.customer_id, affectedRows: 1 }];
     }
 
+    if (q.startsWith('UPDATE CUSTOMERS')) {
+        const id = parseInt(params[params.length - 1], 10);
+        const cust = inMemoryDB.customers.find(c => c.customer_id === id);
+        if (cust) {
+            const [first_name, last_name, email, phone, address] = params;
+            if (first_name !== null && first_name !== undefined) cust.first_name = first_name;
+            if (last_name !== null && last_name !== undefined) cust.last_name = last_name;
+            if (email !== null && email !== undefined) cust.email = email;
+            if (phone !== null && phone !== undefined) cust.phone = phone;
+            if (address !== null && address !== undefined) cust.address = address;
+            return [{ affectedRows: 1 }];
+        }
+        return [{ affectedRows: 0 }];
+    }
+
+    if (q.includes('FROM ACCOUNTS WHERE CUSTOMER_ID = ?') && (q.includes('COALESCE(SUM(BALANCE)') || q.includes('TOTAL_BALANCE'))) {
+        const custId = parseInt(params[0], 10);
+        const custAccounts = inMemoryDB.accounts.filter(a => a.customer_id === custId);
+        const total = custAccounts.reduce((sum, a) => sum + parseFloat(a.balance), 0);
+        return [[{ total_balance: total }]];
+    }
+
+    if (q.includes('SELECT ACCOUNT_NUMBER FROM ACCOUNTS WHERE CUSTOMER_ID = ?')) {
+        const custId = parseInt(params[0], 10);
+        const rows = inMemoryDB.accounts.filter(a => a.customer_id === custId).map(a => ({ account_number: a.account_number }));
+        return [rows];
+    }
+
+    if (q.startsWith('DELETE FROM TRANSFERS')) {
+        const accNums = Array.isArray(params[0]) ? params[0] : [params[0]];
+        const numSet = new Set(accNums.map(n => parseInt(n, 10)));
+        const before = inMemoryDB.transfers.length;
+        inMemoryDB.transfers = inMemoryDB.transfers.filter(tr => !numSet.has(tr.sender_account) && !numSet.has(tr.receiver_account));
+        return [{ affectedRows: before - inMemoryDB.transfers.length }];
+    }
+
+    if (q.startsWith('DELETE FROM TRANSACTIONS WHERE ACCOUNT_NUMBER IN')) {
+        const accNums = Array.isArray(params[0]) ? params[0] : [params[0]];
+        const numSet = new Set(accNums.map(n => parseInt(n, 10)));
+        const before = inMemoryDB.transactions.length;
+        inMemoryDB.transactions = inMemoryDB.transactions.filter(t => !numSet.has(t.account_number));
+        return [{ affectedRows: before - inMemoryDB.transactions.length }];
+    }
+
+    if (q.startsWith('DELETE FROM ACCOUNTS WHERE CUSTOMER_ID = ?')) {
+        const custId = parseInt(params[0], 10);
+        const before = inMemoryDB.accounts.length;
+        inMemoryDB.accounts = inMemoryDB.accounts.filter(a => a.customer_id !== custId);
+        return [{ affectedRows: before - inMemoryDB.accounts.length }];
+    }
+
+    if (q.startsWith('DELETE FROM CUSTOMERS WHERE CUSTOMER_ID = ?')) {
+        const custId = parseInt(params[0], 10);
+        const idx = inMemoryDB.customers.findIndex(c => c.customer_id === custId);
+        if (idx !== -1) {
+            inMemoryDB.customers.splice(idx, 1);
+            // Cascade delete empty accounts for this customer
+            inMemoryDB.accounts = inMemoryDB.accounts.filter(a => a.customer_id !== custId);
+            return [{ affectedRows: 1 }];
+        }
+        return [{ affectedRows: 0 }];
+    }
+
     // 5. ACCOUNTS LIST & DETAIL
     if (q.includes('FROM ACCOUNTS A') && q.includes('JOIN CUSTOMERS C')) {
         if (q.includes('A.ACCOUNT_NUMBER = ?')) {
@@ -308,15 +376,24 @@ async function mockQuery(sql, params = []) {
             };
         });
 
-        // Filter status
+        // Filter status & type with sequential param tracking
+        let pIdx = 0;
         if (q.includes('A.STATUS = ?')) {
-            const statusVal = params[0];
+            const statusVal = params[pIdx++];
             rows = rows.filter(r => r.status === statusVal);
         }
-        // Filter type
         if (q.includes('A.ACCOUNT_TYPE = ?')) {
-            const typeVal = params[q.includes('A.STATUS = ?') ? 1 : 0];
+            const typeVal = params[pIdx++];
             rows = rows.filter(r => r.account_type === typeVal);
+        }
+        if (q.includes('A.ACCOUNT_NUMBER LIKE ?')) {
+            const sVal = (params[pIdx] || '').replace(/%/g, '').toLowerCase();
+            rows = rows.filter(r => 
+                String(r.account_number).includes(sVal) ||
+                (r.first_name || '').toLowerCase().includes(sVal) ||
+                (r.last_name || '').toLowerCase().includes(sVal) ||
+                (r.email || '').toLowerCase().includes(sVal)
+            );
         }
 
         rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
@@ -417,6 +494,14 @@ async function mockQuery(sql, params = []) {
         const acc = inMemoryDB.accounts.find(a => a.account_number === parseInt(accNum, 10));
         if (acc) acc.status = newStatus;
         return [{ affectedRows: acc ? 1 : 0 }];
+    }
+
+    if (q.startsWith('UPDATE TRANSACTIONS SET TRANSACTION_TYPE = ? WHERE ACCOUNT_NUMBER = ?')) {
+        const [newType, accNum] = params;
+        const targetAcc = parseInt(accNum, 10);
+        const tx = inMemoryDB.transactions.find(t => t.account_number === targetAcc);
+        if (tx) tx.transaction_type = newType;
+        return [{ affectedRows: tx ? 1 : 0 }];
     }
 
     return [[[]]];

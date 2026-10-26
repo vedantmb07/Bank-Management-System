@@ -33,9 +33,16 @@ const formatDate = (isoString) => {
     });
 };
 
-const showToast = (message, type = 'success') => {
+const showToast = (messageOrType, typeOrMessage = 'success') => {
     const container = document.getElementById('toastContainer');
     if (!container) return;
+
+    let message = messageOrType;
+    let type = typeOrMessage;
+    if (['success', 'error', 'info', 'warning'].includes(messageOrType) && typeof typeOrMessage === 'string' && typeOrMessage.length > 0) {
+        type = messageOrType;
+        message = typeOrMessage;
+    }
 
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -240,12 +247,17 @@ async function loadCustomers(searchQuery = '') {
                 <td><span class="badge badge-type">${c.total_accounts} Accounts</span></td>
                 <td><span class="mono-val amount-positive">${formatCurrency(c.total_balance)}</span></td>
                 <td>
-                    <button class="btn btn-sm btn-outline" onclick="viewCustomerDetails(${c.customer_id})">
-                        <i class="far fa-eye"></i> Details
-                    </button>
-                    <button class="btn btn-sm btn-primary" onclick="openNewAccountForCustomer(${c.customer_id}, '${c.first_name} ${c.last_name}')">
-                        <i class="fas fa-plus"></i> Open Acc
-                    </button>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        <button class="btn btn-sm btn-outline" onclick="viewCustomerDetails(${c.customer_id})">
+                            <i class="far fa-eye"></i> Details
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="openEditCustomerModal(${c.customer_id})" title="Edit Profile">
+                            <i class="far fa-edit"></i> Edit
+                        </button>
+                        <button class="btn btn-sm btn-primary" onclick="openNewAccountForCustomer(${c.customer_id}, '${c.first_name} ${c.last_name}')">
+                            <i class="fas fa-plus"></i> Open Acc
+                        </button>
+                    </div>
                 </td>
             </tr>
         `).join('');
@@ -294,6 +306,7 @@ async function loadAccounts(filters = {}) {
                     <td style="color: var(--text-dim); font-size: 0.78rem;">${formatDate(a.created_at)}</td>
                     <td>
                         <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                            ${a.status === 'ACTIVE' ? `
                             <button class="btn btn-sm btn-emerald" onclick="prepareDeposit(${a.account_number})">
                                 <i class="fas fa-arrow-down"></i> Deposit
                             </button>
@@ -303,11 +316,14 @@ async function loadAccounts(filters = {}) {
                             <button class="btn btn-sm btn-outline" onclick="prepareTransferFrom(${a.account_number})">
                                 <i class="fas fa-exchange-alt"></i> Transfer
                             </button>
-                            ${a.status === 'ACTIVE' 
-                                ? `<button class="btn btn-sm btn-outline" style="color:#fbbf24;" onclick="changeAccountStatus(${a.account_number}, 'FROZEN')">Freeze</button>` 
-                                : a.status === 'FROZEN' 
-                                ? `<button class="btn btn-sm btn-outline" style="color:#34d399;" onclick="changeAccountStatus(${a.account_number}, 'ACTIVE')">Unfreeze</button>` 
-                                : ''}
+                            <button class="btn btn-sm btn-outline" style="color:#fbbf24;" onclick="changeAccountStatus(${a.account_number}, 'FROZEN')">Freeze</button>
+                            <button class="btn btn-sm btn-outline" style="color:#f87171;" onclick="changeAccountStatus(${a.account_number}, 'CLOSED')">Close</button>
+                            ` : a.status === 'FROZEN' ? `
+                            <button class="btn btn-sm btn-outline" style="color:#34d399;" onclick="changeAccountStatus(${a.account_number}, 'ACTIVE')">Unfreeze</button>
+                            <button class="btn btn-sm btn-outline" style="color:#f87171;" onclick="changeAccountStatus(${a.account_number}, 'CLOSED')">Close</button>
+                            ` : `
+                            <button class="btn btn-sm btn-outline" style="color:#34d399;" onclick="changeAccountStatus(${a.account_number}, 'ACTIVE')">Reactivate</button>
+                            `}
                         </div>
                     </td>
                 </tr>
@@ -414,15 +430,15 @@ async function testDbConnectionQuick() {
 
         if (health.success) {
             if (health.isDemoMode) {
-                showToast('info', `Cloud Demo Mode: Active (${latency}ms)`);
+                showToast(`Cloud Demo Mode: Active (${latency}ms)`, 'info');
             } else {
-                showToast('success', `MySQL Database: Connected (${latency}ms, ${health.database})`);
+                showToast(`MySQL Database: Connected (${latency}ms, ${health.database})`, 'success');
             }
         } else {
-            showToast('error', `DB Connection: ${health.message || 'Offline'}`);
+            showToast(`DB Connection: ${health.message || 'Offline'}`, 'error');
         }
     } catch (err) {
-        showToast('error', `Connection Failed: ${err.message}`);
+        showToast(`Connection Failed: ${err.message}`, 'error');
     }
 }
 
@@ -550,14 +566,27 @@ window.viewCustomerDetails = async (custId) => {
                 </div>
             </div>
 
-            <h4 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 12px;">Linked Accounts (${c.accounts.length})</h4>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 16px;">
+                <h4 style="font-size: 0.95rem; font-weight: 700;">Linked Accounts (${c.accounts.length})</h4>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn btn-sm btn-outline" onclick="openEditCustomerModal(${c.customer_id})">
+                        <i class="fas fa-edit"></i> Edit Profile
+                    </button>
+                    <button class="btn btn-sm btn-outline" style="color: #f87171;" onclick="handleDeleteCustomer(${c.customer_id})">
+                        <i class="fas fa-trash-alt"></i> Delete Customer
+                    </button>
+                    <button class="btn btn-sm btn-primary" onclick="openNewAccountForCustomer(${c.customer_id}, '${c.first_name} ${c.last_name}')">
+                        <i class="fas fa-plus"></i> Open Account
+                    </button>
+                </div>
+            </div>
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 ${c.accounts.length === 0 ? `<div class="empty-state">No accounts opened yet for this customer.</div>` : c.accounts.map(acc => `
                     <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(15, 23, 42, 0.6); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-subtle);">
                         <div>
                             <span class="mono-val" style="color: #38bdf8; font-weight: 700;">#${acc.account_number}</span>
                             <span class="badge badge-type" style="margin-left: 8px;">${acc.account_type}</span>
-                            <span class="badge ${acc.status === 'ACTIVE' ? 'badge-active' : 'badge-frozen'}" style="margin-left: 4px;">${acc.status}</span>
+                            <span class="badge ${acc.status === 'ACTIVE' ? 'badge-active' : acc.status === 'FROZEN' ? 'badge-frozen' : 'badge-closed'}" style="margin-left: 4px;">${acc.status}</span>
                         </div>
                         <div class="mono-val amount-positive" style="font-size: 1.1rem; font-weight: 700;">
                             ${formatCurrency(acc.balance)}
@@ -568,6 +597,54 @@ window.viewCustomerDetails = async (custId) => {
         `;
 
         openModal('customerDetailsModal');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+};
+
+window.openEditCustomerModal = async (custId) => {
+    try {
+        const res = await api.getCustomer(custId);
+        if (!res.success) throw new Error(res.message);
+        const c = res.data;
+        document.getElementById('editCustId').value = c.customer_id;
+        document.getElementById('editCustFirstName').value = c.first_name;
+        document.getElementById('editCustLastName').value = c.last_name;
+        document.getElementById('editCustEmail').value = c.email;
+        document.getElementById('editCustPhone').value = c.phone;
+        document.getElementById('editCustAddress').value = c.address || '';
+        openModal('editCustomerModal');
+    } catch (err) {
+        showToast(err.message, 'error');
+    }
+};
+
+window.handleDeleteCustomer = async (custId) => {
+    try {
+        const custRes = await api.getCustomer(custId);
+        if (!custRes.success) throw new Error(custRes.message);
+        const c = custRes.data;
+
+        const totalRemaining = (c.accounts || []).reduce((sum, a) => sum + parseFloat(a.balance), 0);
+        if (totalRemaining > 0) {
+            showToast(`Cannot delete customer: ${c.first_name} has remaining balance of ${formatCurrency(totalRemaining)}. Please withdraw or transfer funds first.`, 'error');
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to permanently delete customer ${c.first_name} ${c.last_name}? Associated empty accounts will be closed.`)) {
+            return;
+        }
+
+        const res = await api.deleteCustomer(custId);
+        if (res.success) {
+            showToast(res.message, 'success');
+            closeModal('customerDetailsModal');
+            loadCustomers();
+            loadDashboard();
+            if (state.currentView === 'accounts') loadAccounts();
+        } else {
+            showToast(res.message, 'error');
+        }
     } catch (err) {
         showToast(err.message, 'error');
     }
@@ -819,6 +896,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const receiver_account = document.getElementById('transferReceiverSelect').value;
         const amount = document.getElementById('transferAmount').value;
 
+        if (sender_account === receiver_account) {
+            showToast('Sender and receiver accounts cannot be the same.', 'error');
+            return;
+        }
+
         try {
             const res = await api.transfer(sender_account, receiver_account, amount);
             if (res.success) {
@@ -829,6 +911,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (state.currentView === 'accounts') loadAccounts();
                 if (state.currentView === 'transfers') loadTransfers();
                 if (state.currentView === 'transactions') loadTransactions();
+            } else {
+                showToast(res.message, 'error');
+            }
+        } catch (err) {
+            showToast(err.message, 'error');
+        }
+    });
+
+    // 6. Edit Customer Form
+    document.getElementById('editCustomerForm')?.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('editCustId').value;
+        const first_name = document.getElementById('editCustFirstName').value.trim();
+        const last_name = document.getElementById('editCustLastName').value.trim();
+        const email = document.getElementById('editCustEmail').value.trim();
+        const phone = document.getElementById('editCustPhone').value.trim();
+        const address = document.getElementById('editCustAddress').value.trim();
+
+        try {
+            const res = await api.updateCustomer(id, { first_name, last_name, email, phone, address });
+            if (res.success) {
+                showToast(`Customer ${first_name} ${last_name} updated successfully!`, 'success');
+                closeModal('editCustomerModal');
+                loadCustomers();
+                loadDashboard();
+                if (document.getElementById('customerDetailsModal')?.classList.contains('open')) {
+                    viewCustomerDetails(id);
+                }
             } else {
                 showToast(res.message, 'error');
             }

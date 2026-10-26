@@ -241,7 +241,17 @@ exports.transfer = async (req, res) => {
             [transferAmount, receiver_account]
         );
 
-        // 5. Record the transfer in Transfers table
+        // 5. Update the trigger-created transaction audit records to 'TRANSFER'
+        await connection.query(
+            'UPDATE Transactions SET transaction_type = ? WHERE account_number = ? ORDER BY transaction_id DESC LIMIT 1',
+            ['TRANSFER', sender_account]
+        );
+        await connection.query(
+            'UPDATE Transactions SET transaction_type = ? WHERE account_number = ? ORDER BY transaction_id DESC LIMIT 1',
+            ['TRANSFER', receiver_account]
+        );
+
+        // 6. Record the transfer in Transfers table
         const [transferResult] = await connection.query(
             'INSERT INTO Transfers (sender_account, receiver_account, amount) VALUES (?, ?, ?)',
             [sender_account, receiver_account, transferAmount]

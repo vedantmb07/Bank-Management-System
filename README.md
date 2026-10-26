@@ -18,12 +18,12 @@ A full-stack, enterprise-grade **Bank Management System** built for the **Databa
 **Academic Year:** 2026  
 **Institution:** Academic DBMS Evaluation Project  
 
-| Roll No. | Team Member | Role |
-| :---: | :--- | :--- |
-| **03** | **Juilee Bade** | Database & Frontend Engineering |
-| **04** | **Hari Bhambhani** | Backend API & Database Transactions |
-| **05** | **Vedant Bhangale** | Full-Stack Architecture & System Integration |
-| **07** | **Tejas Chaudhari** | Relational Modeling, DDL/DML & UI Design |
+### 🎓 Team Members
+
+- 👤 **Juilee Bade** (Roll No: `03`)
+- 👤 **Hari Bhambhani** (Roll No: `04`)
+- 👤 **Vedant Bhangale** (Roll No: `05`)
+- 👤 **Tejas Chaudhari** (Roll No: `07`)
 
 ---
 

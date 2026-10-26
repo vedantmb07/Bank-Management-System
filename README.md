@@ -28,7 +28,7 @@ A full-stack, enterprise-grade **Bank Management System** built for the **Databa
 ---
 
 ## 🚀 Live Access & Quick Links
-- **Live Demo:** [Website](bankdb-eta.vercel.app)
+- **Live Demo:** [Website](https://bankdb-eta.vercel.app/#dashboard)
 - **Web Dashboard:** [http://localhost:5000](http://localhost:5000)
 - **API Health Check:** [http://localhost:5000/api/health](http://localhost:5000/api/health)
 - **Dashboard Stats:** [http://localhost:5000/api/dashboard/stats](http://localhost:5000/api/dashboard/stats)

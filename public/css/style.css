@@ -1874,13 +1874,13 @@ select.form-control option {
    ========================================================== */
 
 .bank-hero-panel {
-  background: linear-gradient(135deg, #090e1a 0%, #0d1527 50%, #152238 100%);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #eff6ff 100%);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-xl);
   padding: 28px 32px;
   margin-bottom: 24px;
-  color: #ffffff;
-  box-shadow: 0 14px 30px -8px rgba(15, 23, 42, 0.35), 0 4px 6px -2px rgba(15, 23, 42, 0.15);
+  color: var(--text-main);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
   position: relative;
   overflow: hidden;
 }
@@ -1892,7 +1892,7 @@ select.form-control option {
   right: -20%;
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(37, 99, 235, 0.12) 0%, rgba(16, 185, 129, 0.05) 50%, transparent 70%);
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.07) 0%, rgba(16, 185, 129, 0.03) 50%, transparent 70%);
   pointer-events: none;
 }
 
@@ -1914,15 +1914,15 @@ select.form-control option {
 .bank-badge-icon {
   width: 44px;
   height: 44px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.3) 0%, rgba(16, 185, 129, 0.2) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+  border: 1px solid #bfdbfe;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.25rem;
-  color: #60a5fa;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  color: var(--primary);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.12);
 }
 
 .bank-hero-tag {
@@ -1932,23 +1932,23 @@ select.form-control option {
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.06em;
-  color: #94a3b8;
+  color: var(--text-muted);
   text-transform: uppercase;
 }
 
 .pulse-dot-green {
   width: 8px;
   height: 8px;
-  background: #10b981;
+  background: var(--emerald-light);
   border-radius: 50%;
-  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.6);
   animation: pulse 2s infinite;
 }
 
 .bank-hero-title {
   font-size: 1.22rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--text-main);
   letter-spacing: -0.01em;
   margin-top: 2px;
 }
@@ -1960,26 +1960,27 @@ select.form-control option {
 }
 
 .hero-chip {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
   padding: 6px 14px;
   border-radius: 999px;
   font-size: 0.76rem;
   font-weight: 600;
-  color: #cbd5e1;
+  color: var(--text-secondary);
   display: flex;
   align-items: center;
   gap: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .text-gold {
-  color: #fbbf24;
+  color: var(--amber-light);
 }
 
 .btn-hero-sync {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #f8fafc;
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
   font-size: 0.78rem;
   font-weight: 600;
   padding: 6px 14px;
@@ -1989,12 +1990,13 @@ select.form-control option {
   align-items: center;
   gap: 6px;
   transition: var(--transition);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .btn-hero-sync:hover {
-  background: rgba(37, 99, 235, 0.3);
-  border-color: #3b82f6;
-  color: #ffffff;
+  background: var(--primary-subtle);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .btn-hero-sync:hover i {
@@ -2003,12 +2005,12 @@ select.form-control option {
 }
 
 .bank-hero-balance-section {
-  background: rgba(15, 23, 42, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-lg);
   padding: 20px 24px;
   margin-bottom: 22px;
-  backdrop-filter: blur(10px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
 .hero-balance-label {
@@ -2020,14 +2022,14 @@ select.form-control option {
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.07em;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin-bottom: 8px;
 }
 
 .hero-status-pill {
-  background: rgba(16, 185, 129, 0.15);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #34d399;
+  background: var(--emerald-bg);
+  border: 1px solid var(--emerald-border);
+  color: var(--emerald);
   font-size: 0.72rem;
   font-weight: 700;
   padding: 3px 10px;
@@ -2047,7 +2049,7 @@ select.form-control option {
 .hero-currency-symbol {
   font-size: 1.8rem;
   font-weight: 600;
-  color: #60a5fa;
+  color: var(--primary);
   font-family: var(--font-mono);
 }
 
@@ -2056,14 +2058,13 @@ select.form-control option {
   font-size: 2.6rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #ffffff;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  color: var(--text-main);
 }
 
 .hero-reserve-tag {
-  background: rgba(59, 130, 246, 0.18);
-  border: 1px solid rgba(59, 130, 246, 0.35);
-  color: #93c5fd;
+  background: var(--blue-bg);
+  border: 1px solid var(--blue-border);
+  color: var(--blue);
   font-size: 0.74rem;
   font-weight: 700;
   padding: 4px 10px;
@@ -2075,7 +2076,7 @@ select.form-control option {
 
 .hero-balance-sub {
   font-size: 0.8rem;
-  color: #94a3b8;
+  color: var(--text-muted);
   margin-top: 6px;
 }
 
@@ -2085,10 +2086,11 @@ select.form-control option {
   align-items: center;
   gap: 16px;
   padding: 16px 20px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   margin-bottom: 22px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 @media (max-width: 900px) {
@@ -2109,7 +2111,7 @@ select.form-control option {
 .hero-strip-label {
   font-size: 0.72rem;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2121,18 +2123,18 @@ select.form-control option {
   font-family: var(--font-mono);
   font-size: 1.15rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--text-main);
 }
 
 .hero-strip-sub {
   font-size: 0.72rem;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .hero-strip-divider {
   width: 1px;
   height: 36px;
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--border-subtle);
 }
 
 .bank-hero-actions-bar {
@@ -2142,13 +2144,26 @@ select.form-control option {
   flex-wrap: wrap;
 }
 
+.bank-hero-actions-bar .btn-outline {
+  background: #ffffff;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.bank-hero-actions-bar .btn-outline:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border-hover);
+  color: var(--primary);
+}
+
 .btn-action-glow {
-  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
   font-weight: 700;
 }
 
 .btn-action-glow:hover {
-  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.6);
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4);
 }
 
 /* Portfolio Security Note */

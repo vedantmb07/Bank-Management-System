@@ -89,10 +89,11 @@ const viewTitles = {
     'customers': 'Customer Directory & Profiles',
     'accounts': 'Bank Accounts & Portfolios',
     'transactions': 'Transactions Ledger & Audit Trail',
-    'transfers': 'Inter-Account Funds Transfers'
+    'transfers': 'Inter-Account Funds Transfers',
+    'database': 'Database Diagnostics & SQL Queries Directory'
 };
 
-function switchView(viewName) {
+function switchView(viewName, filterCategory) {
     if (!viewTitles[viewName]) viewName = 'dashboard';
     state.currentView = viewName;
 
@@ -130,10 +131,13 @@ function switchView(viewName) {
     else if (viewName === 'accounts') loadAccounts();
     else if (viewName === 'transactions') loadTransactions();
     else if (viewName === 'transfers') loadTransfers();
+    else if (viewName === 'database') loadDatabaseView(filterCategory);
 }
+window.switchView = switchView;
 
 // ----------------------------------------------------------
 // 1. DASHBOARD VIEW
+// ----------------------------------------------------------
 // ----------------------------------------------------------
 async function loadDashboard() {
     try {
@@ -143,13 +147,40 @@ async function loadDashboard() {
         const d = res.data;
         state.stats = d;
 
-        // Metric Counters
-        document.getElementById('statTotalLiquidity').textContent = formatCurrency(d.totalLiquidity);
-        document.getElementById('statTotalAccounts').textContent = d.totalAccounts;
-        document.getElementById('statActiveAccounts').textContent = `${d.activeAccounts} Active • ${d.frozenAccounts} Frozen`;
-        document.getElementById('statTotalCustomers').textContent = d.totalCustomers;
-        document.getElementById('statTotalTransfers').textContent = d.totalTransfers;
-        document.getElementById('statTransferVolume').textContent = formatCurrency(d.totalTransferVolume);
+        // Big Hero Liquidity Balance
+        const heroLiq = document.getElementById('heroTotalLiquidity');
+        if (heroLiq) {
+            const rawNum = (parseFloat(d.totalLiquidity) || 0).toLocaleString('en-IN', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            heroLiq.textContent = rawNum;
+        }
+
+        // Helper to safely set text content
+        const setTxt = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = val;
+        };
+
+        const formattedLiquidity = formatCurrency(d.totalLiquidity);
+        setTxt('statTotalLiquidity', formattedLiquidity);
+        setTxt('statTotalAccounts', d.totalAccounts);
+        setTxt('statActiveAccounts', `${d.activeAccounts} Active Portfolios`);
+        setTxt('statTotalCustomers', d.totalCustomers);
+        setTxt('statTotalTransfers', d.totalTransfers);
+        setTxt('statTransferVolume', formatCurrency(d.totalTransferVolume));
+
+        // Additional Cards in Grid
+        setTxt('statCardTotalAccounts', d.totalAccounts);
+        setTxt('statCardActiveAccounts', `${d.activeAccounts} Active • ${d.frozenAccounts || 0} Frozen`);
+        setTxt('statCardTotalCustomers', d.totalCustomers);
+        setTxt('statCardTransferVolume', formatCurrency(d.totalTransferVolume));
+        setTxt('statCardTotalTransfers', d.totalTransfers);
+
+        // Average Customer Balance
+        const avgBal = d.totalCustomers > 0 ? (d.totalLiquidity / d.totalCustomers) : 0;
+        setTxt('statAvgCustomerBalance', formatCurrency(avgBal));
 
         // Render account types breakdown
         const typeContainer = document.getElementById('accountTypesBreakdown');
@@ -158,16 +189,28 @@ async function loadDashboard() {
             typeContainer.innerHTML = d.accountTypes.map(t => {
                 const pct = Math.round((t.count / totalAccs) * 100);
                 let fillClass = 'fill-savings';
-                if (t.account_type === 'CHECKING') fillClass = 'fill-checking';
-                if (t.account_type === 'FIXED_DEPOSIT') fillClass = 'fill-fd';
+                let iconClass = 'fa-piggy-bank';
+                if (t.account_type === 'CHECKING') {
+                    fillClass = 'fill-checking';
+                    iconClass = 'fa-money-check-dollar';
+                }
+                if (t.account_type === 'FIXED_DEPOSIT') {
+                    fillClass = 'fill-fd';
+                    iconClass = 'fa-vault';
+                }
 
                 return `
                     <div class="type-progress-item">
                         <div class="type-progress-labels">
-                            <span>${t.account_type} (${t.count})</span>
-                            <span class="mono-val">${formatCurrency(t.total_balance)} (${pct}%)</span>
+                            <span style="display: inline-flex; align-items: center; gap: 6px;">
+                                <i class="fas ${iconClass}" style="font-size: 0.8rem; color: var(--text-muted);"></i>
+                                <strong>${t.account_type}</strong> (${t.count} accounts)
+                            </span>
+                            <span class="mono-val" style="font-weight: 700; color: var(--text-main);">
+                                ${formatCurrency(t.total_balance)} <span style="font-size: 0.76rem; color: var(--text-muted); font-weight: 500;">(${pct}%)</span>
+                            </span>
                         </div>
-                        <div class="progress-track">
+                        <div class="progress-track" style="height: 8px;">
                             <div class="progress-bar-fill ${fillClass}" style="width: ${pct}%"></div>
                         </div>
                     </div>
@@ -179,28 +222,49 @@ async function loadDashboard() {
         const txTable = document.getElementById('recentTransactionsBody');
         if (txTable) {
             if (!d.recentTransactions || d.recentTransactions.length === 0) {
-                txTable.innerHTML = `<tr><td colspan="5" class="empty-state"><i class="fas fa-inbox"></i><p>No recent transactions</p></td></tr>`;
+                txTable.innerHTML = `<tr><td colspan="7" class="empty-state"><i class="fas fa-inbox"></i><p>No recent transactions recorded in ledger</p></td></tr>`;
             } else {
                 txTable.innerHTML = d.recentTransactions.map(tx => {
                     let badgeClass = 'badge-deposit';
                     let sign = '+';
                     let amountClass = 'amount-positive';
+                    let typeIcon = 'fa-arrow-down';
+
                     if (tx.transaction_type === 'WITHDRAWAL') {
                         badgeClass = 'badge-withdrawal';
                         sign = '-';
                         amountClass = 'amount-negative';
+                        typeIcon = 'fa-arrow-up';
                     } else if (tx.transaction_type === 'TRANSFER') {
                         badgeClass = 'badge-transfer';
                         sign = '';
                         amountClass = '';
+                        typeIcon = 'fa-exchange-alt';
                     }
+
+                    const txRef = `#TX-${String(tx.transaction_id).padStart(4, '0')}`;
+                    const postBalance = tx.balance_after !== undefined && tx.balance_after !== null
+                        ? formatCurrency(tx.balance_after)
+                        : '-';
 
                     return `
                         <tr>
-                            <td><span class="mono-val">#${tx.account_number}</span></td>
-                            <td>${tx.first_name} ${tx.last_name}</td>
-                            <td><span class="badge ${badgeClass}">${tx.transaction_type}</span></td>
-                            <td><span class="mono-val ${amountClass}">${sign}${formatCurrency(tx.amount)}</span></td>
+                            <td><span class="bank-tx-id">${txRef}</span></td>
+                            <td>
+                                <div style="display: flex; flex-direction: column;">
+                                    <span style="font-weight: 600; color: var(--text-main); font-size: 0.85rem;">${tx.first_name || ''} ${tx.last_name || ''}</span>
+                                    <span style="font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono);">Acc #${tx.account_number}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge ${badgeClass}" style="display: inline-flex; align-items: center; gap: 4px;">
+                                    <i class="fas ${typeIcon}" style="font-size: 0.68rem;"></i>
+                                    ${tx.transaction_type}
+                                </span>
+                            </td>
+                            <td><span class="mono-val ${amountClass}" style="font-weight: 700; font-size: 0.88rem;">${sign}${formatCurrency(tx.amount)}</span></td>
+                            <td><span class="mono-val" style="font-size: 0.82rem; color: var(--text-secondary);">${postBalance}</span></td>
+                            <td><span class="bank-cleared-pill"><i class="fas fa-check-circle"></i> Cleared</span></td>
                             <td style="color: var(--text-dim); font-size: 0.78rem;">${formatDate(tx.transaction_date)}</td>
                         </tr>
                     `;
@@ -420,26 +484,733 @@ async function loadTransfers() {
 }
 
 // ----------------------------------------------------------
-// 6. DB CONNECTION HEALTH CHECK
+// 6. DATABASE DIAGNOSTICS & SQL QUERIES DIRECTORY
 // ----------------------------------------------------------
-async function testDbConnectionQuick() {
+
+async function testDbConnectionQuick(silentToast = false) {
+    const btn = document.getElementById('btnTestDbSection');
+    const origBtnHtml = btn ? btn.innerHTML : '';
+    if (btn) btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Testing...`;
+
     try {
         const start = performance.now();
         const health = await api.getHealth();
         const latency = Math.round(performance.now() - start);
 
+        // Update Diagnostics UI elements in view-database
+        const dbNameEl = document.getElementById('diagDbName');
+        const dbHostEl = document.getElementById('diagDbHost');
+        const dbLatencyEl = document.getElementById('diagDbLatency');
+        const dbTablesEl = document.getElementById('diagDbTables');
+        const statusBadgeEl = document.getElementById('dbDiagStatusBadge');
+        const statusBannerEl = document.getElementById('diagStatusBanner');
+        const statusMsgEl = document.getElementById('diagStatusMessage');
+        const statusIconEl = document.getElementById('diagStatusIcon');
+
         if (health.success) {
-            if (health.isDemoMode) {
-                showToast(`Cloud Demo Mode: Active (${latency}ms)`, 'info');
-            } else {
-                showToast(`MySQL Database: Connected (${latency}ms, ${health.database})`, 'success');
+            const tableList = (health.tables || []).join(', ');
+            if (dbNameEl) dbNameEl.textContent = health.database || 'BankManagementDB';
+            if (dbHostEl) dbHostEl.textContent = health.isDemoMode ? '127.0.0.1:3306 (Demo Fallback)' : '127.0.0.1:3306 (MySQL 8.0)';
+            if (dbLatencyEl) dbLatencyEl.textContent = `${latency} ms`;
+            if (dbTablesEl) dbTablesEl.textContent = `${health.tableCount || 4} Tables (${tableList})`;
+
+            if (statusBadgeEl) {
+                statusBadgeEl.textContent = health.isDemoMode ? 'Cloud In-Memory Demo Mode' : `MySQL ${health.version || '8.0'} Live Connection`;
+                if (health.isDemoMode) {
+                    statusBadgeEl.parentElement?.classList.add('demo-mode');
+                } else {
+                    statusBadgeEl.parentElement?.classList.remove('demo-mode');
+                }
+            }
+
+            if (statusBannerEl) statusBannerEl.classList.remove('is-error');
+            if (statusIconEl) statusIconEl.className = 'fas fa-check-circle';
+            if (statusMsgEl) statusMsgEl.textContent = `${health.message} (Ping: ${latency}ms at ${new Date().toLocaleTimeString()})`;
+
+            if (!silentToast) {
+                if (health.isDemoMode) {
+                    showToast(`Cloud Demo Mode: Active (${latency}ms)`, 'info');
+                } else {
+                    showToast(`MySQL Database: Connected (${latency}ms, ${health.database})`, 'success');
+                }
             }
         } else {
-            showToast(`DB Connection: ${health.message || 'Offline'}`, 'error');
+            if (statusBannerEl) statusBannerEl.classList.add('is-error');
+            if (statusIconEl) statusIconEl.className = 'fas fa-exclamation-circle';
+            if (statusMsgEl) statusMsgEl.textContent = `DB Error: ${health.message || 'Offline'}`;
+            if (!silentToast) {
+                showToast(`DB Connection: ${health.message || 'Offline'}`, 'error');
+            }
         }
     } catch (err) {
-        showToast(`Connection Failed: ${err.message}`, 'error');
+        const statusBannerEl = document.getElementById('diagStatusBanner');
+        const statusMsgEl = document.getElementById('diagStatusMessage');
+        if (statusBannerEl) statusBannerEl.classList.add('is-error');
+        if (statusMsgEl) statusMsgEl.textContent = `Connection Failure: ${err.message}`;
+        if (!silentToast) {
+            showToast(`Connection Failed: ${err.message}`, 'error');
+        }
+    } finally {
+        if (btn) btn.innerHTML = origBtnHtml;
     }
+}
+
+// Complete Project SQL Queries Catalog
+const sqlQueries = [
+    // --- DASHBOARD SECTION ---
+    {
+        id: 'dash-liquidity',
+        section: 'dashboard',
+        sectionLabel: 'Dashboard',
+        badgeType: 'Aggregate & Conditional Count',
+        route: 'GET /api/dashboard/stats',
+        title: 'Portfolio Total Liquidity & Simultaneous Account Status Breakdown',
+        description: 'Computes total active deposits across the entire bank, along with simultaneous conditional counts of active, frozen, and closed accounts in a single table scan.',
+        concepts: ['SUM() Aggregation', 'COALESCE Null Safety', 'CASE Expression', 'Conditional Aggregations'],
+        query: `SELECT 
+    COUNT(*) AS total_accounts,
+    COALESCE(SUM(balance), 0) AS total_liquidity,
+    COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) AS active_accounts,
+    COUNT(CASE WHEN status = 'FROZEN' THEN 1 END) AS frozen_accounts,
+    COUNT(CASE WHEN status = 'CLOSED' THEN 1 END) AS closed_accounts
+FROM Accounts;`
+    },
+    {
+        id: 'dash-customers',
+        section: 'dashboard',
+        sectionLabel: 'Dashboard',
+        badgeType: 'Entity Cardinality Count',
+        route: 'GET /api/dashboard/stats',
+        title: 'Total KYC-Registered Customer Count',
+        description: 'Retrieves total customer records enrolled in the master database for real-time dashboard KPI tracking.',
+        concepts: ['COUNT(*) Aggregate', 'Master Entity Cardinality'],
+        query: `SELECT COUNT(*) AS total_customers FROM Customers;`
+    },
+    {
+        id: 'dash-types',
+        section: 'dashboard',
+        sectionLabel: 'Dashboard',
+        badgeType: 'Group By & Aggregations',
+        route: 'GET /api/dashboard/stats',
+        title: 'Portfolio Breakdown by Account Type (Savings, Checking, FD)',
+        description: 'Aggregates account counts and total liquidity segregated by account type (SAVINGS, CHECKING, FIXED_DEPOSIT) for portfolio allocation bars.',
+        concepts: ['GROUP BY Clause', 'SUM() & COUNT() Aggregates', 'ENUM Partitioning'],
+        query: `SELECT 
+    account_type, 
+    COUNT(*) AS count, 
+    COALESCE(SUM(balance), 0) AS total_balance 
+FROM Accounts 
+GROUP BY account_type;`
+    },
+    {
+        id: 'dash-transfers',
+        section: 'dashboard',
+        sectionLabel: 'Dashboard',
+        badgeType: 'Volume Aggregation',
+        route: 'GET /api/dashboard/stats',
+        title: 'Total Inter-Account Transfer Volume & Count',
+        description: 'Calculates the cumulative sum of money transferred between accounts and total transfer transaction count.',
+        concepts: ['Volume Metrics', 'COALESCE Fallback', 'Financial Auditing'],
+        query: `SELECT 
+    COUNT(*) AS total_transfers,
+    COALESCE(SUM(amount), 0) AS total_transfer_volume
+FROM Transfers;`
+    },
+    {
+        id: 'dash-recent',
+        section: 'dashboard',
+        sectionLabel: 'Dashboard',
+        badgeType: '3-Table Relational JOIN',
+        route: 'GET /api/dashboard/stats',
+        title: 'Real-Time Activity Stream (Transactions + Accounts + Customers)',
+        description: 'Performs a 3-table relational JOIN connecting Transactions with Accounts and Customers to display owner names alongside immutable transaction audit records.',
+        concepts: ['INNER JOIN', 'Foreign Key Relational Resolution', 'ORDER BY Date DESC', 'LIMIT 6 Pagination'],
+        query: `SELECT 
+    t.transaction_id,
+    t.account_number,
+    t.transaction_type,
+    t.amount,
+    t.balance_after,
+    t.transaction_date,
+    c.first_name,
+    c.last_name
+FROM Transactions t
+JOIN Accounts a ON t.account_number = a.account_number
+JOIN Customers c ON a.customer_id = c.customer_id
+ORDER BY t.transaction_date DESC, t.transaction_id DESC
+LIMIT 6;`
+    },
+
+    // --- CUSTOMERS SECTION ---
+    {
+        id: 'cust-list',
+        section: 'customers',
+        sectionLabel: 'Customers',
+        badgeType: 'LEFT JOIN & Multi-Column Search',
+        route: 'GET /api/customers?search=',
+        title: 'Customer Directory with Total Accounts & Aggregated Balance',
+        description: 'Performs a LEFT OUTER JOIN to list all customers including those with 0 accounts, aggregating total portfolio balance and providing multi-column search filtering.',
+        concepts: ['LEFT OUTER JOIN', 'GROUP BY Primary Key', 'Wildcard LIKE Matching', 'COALESCE Handling'],
+        query: `SELECT 
+    c.customer_id,
+    c.first_name,
+    c.last_name,
+    c.email,
+    c.phone,
+    c.address,
+    c.created_at,
+    COUNT(a.account_number) AS total_accounts,
+    COALESCE(SUM(a.balance), 0) AS total_balance
+FROM Customers c
+LEFT JOIN Accounts a ON c.customer_id = a.customer_id
+WHERE c.first_name LIKE ? 
+   OR c.last_name LIKE ? 
+   OR c.email LIKE ? 
+   OR c.phone LIKE ?
+GROUP BY c.customer_id 
+ORDER BY c.customer_id DESC;`
+    },
+    {
+        id: 'cust-profile',
+        section: 'customers',
+        sectionLabel: 'Customers',
+        badgeType: 'Primary & Foreign Key Lookups',
+        route: 'GET /api/customers/:id',
+        title: 'Customer Profile Inspection & Associated Accounts Ledger',
+        description: 'Fetches single master customer record by Primary Key, followed by all dependent child bank accounts via customer_id Foreign Key (1:N cardinality).',
+        concepts: ['Primary Key Lookup', 'Foreign Key Traversal', '1-to-Many Relationship', 'ORDER BY created_at'],
+        query: `-- 1. Fetch Master Customer Profile
+SELECT * FROM Customers WHERE customer_id = ?;
+
+-- 2. Fetch All Accounts belonging to this Customer
+SELECT * FROM Accounts 
+WHERE customer_id = ? 
+ORDER BY created_at DESC;`
+    },
+    {
+        id: 'cust-insert',
+        section: 'customers',
+        sectionLabel: 'Customers',
+        badgeType: 'Unique Validation & INSERT',
+        route: 'POST /api/customers',
+        title: 'Customer Onboarding with Candidate Key Uniqueness Verification',
+        description: 'Enforces database integrity by verifying no existing customer holds the provided unique email or phone number before issuing an INSERT.',
+        concepts: ['Candidate Key Integrity', 'UNIQUE Constraints (Email & Phone)', 'DML INSERT', 'AUTO_INCREMENT Primary Key'],
+        query: `-- Step 1: Pre-validation to avoid Duplicate Key Collision
+SELECT customer_id FROM Customers 
+WHERE email = ? OR phone = ?;
+
+-- Step 2: Insert new verified Customer Entity
+INSERT INTO Customers (first_name, last_name, email, phone, address) 
+VALUES (?, ?, ?, ?, ?);
+
+-- Step 3: Fetch Created Customer using generated ID
+SELECT * FROM Customers WHERE customer_id = LAST_INSERT_ID();`
+    },
+    {
+        id: 'cust-update',
+        section: 'customers',
+        sectionLabel: 'Customers',
+        badgeType: 'DML UPDATE',
+        route: 'PUT /api/customers/:id',
+        title: 'Update Customer KYC Information & Residential Details',
+        description: 'Applies localized modifications to customer name, email, phone number, and address while preserving customer_id referential links.',
+        concepts: ['DML UPDATE', 'Parameterized Prepared Statements', 'Referential Link Preservation'],
+        query: `UPDATE Customers 
+SET first_name = ?, last_name = ?, email = ?, phone = ?, address = ? 
+WHERE customer_id = ?;`
+    },
+    {
+        id: 'cust-delete',
+        section: 'customers',
+        sectionLabel: 'Customers',
+        badgeType: 'ON DELETE CASCADE',
+        route: 'DELETE /api/customers/:id',
+        title: 'Delete Customer Record (Triggering Referential Cascade Cleanup)',
+        description: 'Removes customer by ID. In accordance with the relational schema DDL, the FOREIGN KEY ON DELETE CASCADE rule automatically purges all linked accounts and audit transactions.',
+        concepts: ['Referential Integrity', 'ON DELETE CASCADE', 'Automated Orphan Cleanup', 'DML DELETE'],
+        query: `-- Deleting customer automatically cascades to child accounts & transactions:
+DELETE FROM Customers WHERE customer_id = ?;`
+    },
+
+    // --- ACCOUNTS SECTION ---
+    {
+        id: 'acc-list',
+        section: 'accounts',
+        sectionLabel: 'Accounts',
+        badgeType: 'INNER JOIN with Multi-Filters',
+        route: 'GET /api/accounts?status=&account_type=&search=',
+        title: 'Bank Accounts Ledger with Customer Profile Information',
+        description: 'Performs an INNER JOIN between Accounts and Customers with multi-parametric filtering by account status, type, and search keyword.',
+        concepts: ['INNER JOIN', 'Compound WHERE Predicates', 'ENUM Matching', 'ORDER BY created_at DESC'],
+        query: `SELECT 
+    a.account_number,
+    a.customer_id,
+    a.account_type,
+    a.balance,
+    a.status,
+    a.created_at,
+    c.first_name,
+    c.last_name,
+    c.email,
+    c.phone
+FROM Accounts a
+JOIN Customers c ON a.customer_id = c.customer_id
+WHERE (a.status = ? OR ? IS NULL)
+  AND (a.account_type = ? OR ? IS NULL)
+  AND (a.account_number LIKE ? OR c.first_name LIKE ? OR c.last_name LIKE ?)
+ORDER BY a.created_at DESC;`
+    },
+    {
+        id: 'acc-create',
+        section: 'accounts',
+        sectionLabel: 'Accounts',
+        badgeType: 'FK Verification & INSERT',
+        route: 'POST /api/accounts',
+        title: 'Open New Bank Account with Initial Deposit',
+        description: 'Verifies existence of parent customer, allocates a new unique account_number starting at 1001, and establishes foreign key connection.',
+        concepts: ['Foreign Key Verification', 'AUTO_INCREMENT = 1001', 'DML INSERT', 'DECIMAL Precision'],
+        query: `-- Step 1: Verify Customer Parent Entity Exists
+SELECT customer_id FROM Customers WHERE customer_id = ?;
+
+-- Step 2: Insert New Bank Account Entity
+INSERT INTO Accounts (customer_id, account_type, balance, status) 
+VALUES (?, ?, ?, 'ACTIVE');
+
+-- Step 3: Fetch Created Account with Owner Details
+SELECT a.*, c.first_name, c.last_name 
+FROM Accounts a 
+JOIN Customers c ON a.customer_id = c.customer_id 
+WHERE a.account_number = LAST_INSERT_ID();`
+    },
+    {
+        id: 'acc-details',
+        section: 'accounts',
+        sectionLabel: 'Accounts',
+        badgeType: 'Account Statement & Audit Feed',
+        route: 'GET /api/accounts/:accountNumber',
+        title: 'Account Statement with Historical Transactions Ledger',
+        description: 'Retrieves complete account details along with recent chronological debit and credit transaction statements.',
+        concepts: ['Primary Key Filter', 'Foreign Key Relational Lookup', 'Historical Ledger Ordering', 'LIMIT 20'],
+        query: `-- 1. Fetch Account and Customer Owner Details
+SELECT 
+    a.*,
+    c.first_name,
+    c.last_name,
+    c.email,
+    c.phone,
+    c.address
+FROM Accounts a
+JOIN Customers c ON a.customer_id = c.customer_id
+WHERE a.account_number = ?;
+
+-- 2. Fetch Recent Audit Transactions for Statement
+SELECT * FROM Transactions 
+WHERE account_number = ? 
+ORDER BY transaction_date DESC, transaction_id DESC 
+LIMIT 20;`
+    },
+    {
+        id: 'acc-status',
+        section: 'accounts',
+        sectionLabel: 'Accounts',
+        badgeType: 'State Machine UPDATE',
+        route: 'PATCH /api/accounts/:accountNumber/status',
+        title: 'Account Lifecycle Status Control (Freeze, Unfreeze, Close)',
+        description: 'Updates account operational status, preventing transactions on frozen or closed portfolios.',
+        concepts: ['State Machine Transition', 'ENUM Validation (ACTIVE, FROZEN, CLOSED)', 'DML UPDATE'],
+        query: `UPDATE Accounts 
+SET status = ? 
+WHERE account_number = ?;`
+    },
+
+    // --- TRANSACTIONS SECTION ---
+    {
+        id: 'tx-ledger',
+        section: 'transactions',
+        sectionLabel: 'Transactions',
+        badgeType: '3-Table Multi-JOIN & Ledger Audit',
+        route: 'GET /api/transactions?accountNumber=&type=&limit=',
+        title: 'Immutable Transactions Audit Ledger with Customer Attribution',
+        description: 'Executes a 3-way relational JOIN to project transaction ledger entries with associated account type and customer holder name.',
+        concepts: ['Audit Logging', '3-Table INNER JOIN', 'CONCAT String Formatting', 'LIMIT Pagination'],
+        query: `SELECT 
+    t.transaction_id,
+    t.account_number,
+    t.transaction_type,
+    t.amount,
+    t.balance_after,
+    t.transaction_date,
+    a.account_type,
+    c.customer_id,
+    CONCAT(c.first_name, ' ', c.last_name) AS customer_name
+FROM Transactions t
+JOIN Accounts a ON t.account_number = a.account_number
+JOIN Customers c ON a.customer_id = c.customer_id
+WHERE (t.account_number = ? OR ? IS NULL)
+  AND (t.transaction_type = ? OR ? IS NULL)
+ORDER BY t.transaction_date DESC, t.transaction_id DESC 
+LIMIT 50;`
+    },
+    {
+        id: 'tx-operations',
+        section: 'transactions',
+        sectionLabel: 'Transactions',
+        badgeType: 'Trigger-Driven Balance Operations',
+        route: 'POST /api/transactions/deposit | withdraw',
+        title: 'Funds Deposit & Withdrawal Operations (Firing after_account_update Trigger)',
+        description: 'Modifies account balance. In DBMS architecture, application code does NOT manually insert into Transactions; the MySQL trigger executes automatically upon balance modification.',
+        concepts: ['Encapsulated Business Logic', 'Database Trigger Invariant', 'Zero Ledger Drift', 'DML UPDATE'],
+        query: `-- DEPOSIT OPERATION:
+-- 1. Verify account is ACTIVE
+SELECT * FROM Accounts WHERE account_number = ?;
+
+-- 2. Update balance (Fires 'after_account_update' Trigger -> Inserts 'DEPOSIT' row)
+UPDATE Accounts SET balance = balance + ? WHERE account_number = ?;
+
+-- 3. Fetch verified updated balance
+SELECT balance FROM Accounts WHERE account_number = ?;
+
+
+-- WITHDRAWAL OPERATION:
+-- 1. Check account is ACTIVE and has sufficient balance (balance >= amount)
+SELECT * FROM Accounts WHERE account_number = ?;
+
+-- 2. Update balance (Fires 'after_account_update' Trigger -> Inserts 'WITHDRAWAL' row)
+UPDATE Accounts SET balance = balance - ? WHERE account_number = ?;
+
+-- 3. Fetch verified updated balance
+SELECT balance FROM Accounts WHERE account_number = ?;`
+    },
+
+    // --- TRANSFERS SECTION ---
+    {
+        id: 'transfer-acid',
+        section: 'transfers',
+        sectionLabel: 'Transfers',
+        badgeType: 'ACID Transaction with FOR UPDATE',
+        route: 'POST /api/transactions/transfer',
+        title: 'Atomic Inter-Account Funds Transfer (Strict ACID Transaction Block)',
+        description: 'Enforces ACID guarantees with pessimistic row-level locking (SELECT ... FOR UPDATE) to prevent race conditions or double-spending, committing or rolling back as an indivisible unit.',
+        concepts: ['Atomicity (COMMIT/ROLLBACK)', 'Pessimistic Row Locking (FOR UPDATE)', 'Isolation Level', 'Dual Ledger Update'],
+        query: `-- INITIATE STRICT ACID TRANSACTION
+START TRANSACTION;
+
+-- Step 1: Pessimistic Row Lock on Sender Account (Prevents concurrent debits)
+SELECT * FROM Accounts WHERE account_number = ? FOR UPDATE;
+
+-- Step 2: Pessimistic Row Lock on Receiver Account
+SELECT * FROM Accounts WHERE account_number = ? FOR UPDATE;
+
+-- Step 3: Debit Sender Account (Automatically triggers WITHDRAWAL audit row)
+UPDATE Accounts SET balance = balance - ? WHERE account_number = ?;
+
+-- Step 4: Credit Receiver Account (Automatically triggers DEPOSIT audit row)
+UPDATE Accounts SET balance = balance + ? WHERE account_number = ?;
+
+-- Step 5: Record Link in Dedicated Inter-Account Transfers Ledger
+INSERT INTO Transfers (sender_account, receiver_account, amount) 
+VALUES (?, ?, ?);
+
+-- ATOMIC COMMIT: Persists all changes together, or ROLLBACK on any failure
+COMMIT;`
+    },
+    {
+        id: 'transfer-list',
+        section: 'transfers',
+        sectionLabel: 'Transfers',
+        badgeType: 'Dual Multi-Table Relational JOIN',
+        route: 'GET /api/transactions/transfers',
+        title: 'Inter-Account Transfer History with Dual Party Name Resolution',
+        description: 'Joins Accounts and Customers twice to simultaneously resolve sender account owner and receiver account owner in a single unified view.',
+        concepts: ['Self-Referencing / Dual Table Aliases', 'Multi-Table Joins', 'CONCAT Formatting', 'Audit Ledger'],
+        query: `SELECT 
+    t.transfer_id,
+    t.sender_account,
+    t.receiver_account,
+    t.amount,
+    t.transfer_date,
+    CONCAT(cs.first_name, ' ', cs.last_name) AS sender_name,
+    CONCAT(cr.first_name, ' ', cr.last_name) AS receiver_name
+FROM Transfers t
+JOIN Accounts sender ON t.sender_account = sender.account_number
+JOIN Customers cs ON sender.customer_id = cs.customer_id
+JOIN Accounts receiver ON t.receiver_account = receiver.account_number
+JOIN Customers cr ON receiver.customer_id = cr.customer_id
+ORDER BY t.transfer_date DESC, t.transfer_id DESC;`
+    },
+
+    // --- TRIGGERS & SCHEMA DDL ---
+    {
+        id: 'ddl-trigger',
+        section: 'triggers',
+        sectionLabel: 'Triggers & Schema',
+        badgeType: 'Active Database Trigger DDL',
+        route: 'Database.sql',
+        title: 'Automated Ledger Audit Trigger: after_account_update',
+        description: 'Active database rule that fires after any balance update on Accounts, autonomously inserting an immutable audit record into Transactions without application intervention.',
+        concepts: ['AFTER UPDATE Event', 'Active Database Rules', 'OLD & NEW Pseudo-Records', 'Zero Ledger Drift'],
+        query: `DELIMITER $$
+DROP TRIGGER IF EXISTS after_account_update$$
+CREATE TRIGGER after_account_update
+AFTER UPDATE ON Accounts
+FOR EACH ROW
+BEGIN
+    IF NEW.balance <> OLD.balance THEN
+        INSERT INTO Transactions (account_number, transaction_type, amount, balance_after)
+        VALUES (
+            NEW.account_number, 
+            IF(NEW.balance > OLD.balance, 'DEPOSIT', 'WITHDRAWAL'), 
+            ABS(NEW.balance - OLD.balance), 
+            NEW.balance
+        );
+    END IF;
+END$$
+DELIMITER ;`
+    },
+    {
+        id: 'ddl-schema',
+        section: 'triggers',
+        sectionLabel: 'Triggers & Schema',
+        badgeType: 'Relational DDL & Foreign Keys',
+        route: 'Database.sql',
+        title: 'Relational Database Schema Definition (DDL with Cascades & Constraints)',
+        description: 'Formal relational schema definition matching EER diagram with Primary Keys, Foreign Keys, AUTO_INCREMENT seeds, and ON DELETE CASCADE constraints.',
+        concepts: ['DDL CREATE TABLE', 'Primary & Foreign Keys', 'ON DELETE CASCADE', 'ENUM & DECIMAL Data Types'],
+        query: `CREATE DATABASE IF NOT EXISTS BankManagementDB;
+USE BankManagementDB;
+
+-- 1. Customers Table (Master Customer Entity)
+CREATE TABLE IF NOT EXISTS Customers (
+    customer_id INT AUTO_INCREMENT PRIMARY KEY,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    phone VARCHAR(15) UNIQUE NOT NULL,
+    address TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 2. Accounts Table (Financial Portfolio Entity)
+CREATE TABLE IF NOT EXISTS Accounts (
+    account_number BIGINT PRIMARY KEY AUTO_INCREMENT,
+    customer_id INT NOT NULL,
+    account_type ENUM('SAVINGS', 'CHECKING', 'FIXED_DEPOSIT') NOT NULL,
+    balance DECIMAL(15, 2) NOT NULL DEFAULT 0.00,
+    status ENUM('ACTIVE', 'FROZEN', 'CLOSED') DEFAULT 'ACTIVE',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (customer_id) REFERENCES Customers(customer_id) ON DELETE CASCADE
+) AUTO_INCREMENT = 1001;
+
+-- 3. Transactions Table (Immutable Financial Ledger)
+CREATE TABLE IF NOT EXISTS Transactions (
+    transaction_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    account_number BIGINT NOT NULL,
+    transaction_type ENUM('DEPOSIT', 'WITHDRAWAL', 'TRANSFER') NOT NULL,
+    amount DECIMAL(15, 2) NOT NULL,
+    balance_after DECIMAL(15, 2) NOT NULL,
+    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (account_number) REFERENCES Accounts(account_number) ON DELETE CASCADE
+);
+
+-- 4. Transfers Table (Dual-Party Inter-Account Log)
+CREATE TABLE IF NOT EXISTS Transfers (
+    transfer_id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    sender_account BIGINT NOT NULL,
+    receiver_account BIGINT NOT NULL,
+    amount DECIMAL(15, 2) NOT NULL,
+    transfer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (sender_account) REFERENCES Accounts(account_number) ON DELETE CASCADE,
+    FOREIGN KEY (receiver_account) REFERENCES Accounts(account_number) ON DELETE CASCADE
+);`
+    },
+    {
+        id: 'ddl-health',
+        section: 'triggers',
+        sectionLabel: 'Triggers & Schema',
+        badgeType: 'Data Dictionary Introspection',
+        route: 'GET /api/health',
+        title: 'Database Engine Health & Catalog Verification Queries',
+        description: 'Introspects current MySQL database session catalog, engine version, and verifies physical tables count.',
+        concepts: ['Data Dictionary Metadata', 'SHOW TABLES', 'DATABASE() & VERSION() Functions'],
+        query: `-- 1. Introspect active database and engine version
+SELECT DATABASE() AS current_db, VERSION() AS version;
+
+-- 2. Verify registered tables in schema
+SHOW TABLES;`
+    }
+];
+
+let currentSqlFilter = 'all';
+let currentSqlSearch = '';
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function highlightSql(rawSql) {
+    let escaped = escapeHtml(rawSql);
+
+    // 1. Extract comments: -- ...
+    const comments = [];
+    escaped = escaped.replace(/(--[^\n\r]*)/g, (match) => {
+        comments.push(match);
+        return `___COMMENT_${comments.length - 1}___`;
+    });
+
+    // 2. Extract string literals: '...'
+    const strings = [];
+    escaped = escaped.replace(/('([^'\\]|\\.)*')/g, (match) => {
+        strings.push(match);
+        return `___STR_${strings.length - 1}___`;
+    });
+
+    // 3. Highlight SQL Keywords
+    const keywords = [
+        'START TRANSACTION', 'COMMIT', 'ROLLBACK', 'FOR UPDATE',
+        'INSERT IGNORE INTO', 'INSERT INTO', 'DELETE FROM', 'CREATE DATABASE',
+        'CREATE TABLE', 'DROP TRIGGER', 'CREATE TRIGGER', 'AFTER UPDATE ON',
+        'FOR EACH ROW', 'ON DELETE CASCADE', 'IF NOT EXISTS', 'PRIMARY KEY',
+        'AUTO_INCREMENT', 'FOREIGN KEY', 'REFERENCES', 'DEFAULT CURRENT_TIMESTAMP',
+        'GROUP BY', 'ORDER BY', 'LEFT JOIN', 'INNER JOIN', 'RIGHT JOIN',
+        'SHOW TABLES', 'SELECT', 'FROM', 'WHERE', 'JOIN', 'ON', 'AS', 'AND',
+        'OR', 'NOT', 'ASC', 'DESC', 'LIMIT', 'VALUES', 'UPDATE', 'SET',
+        'DELETE', 'CASE', 'WHEN', 'THEN', 'END', 'BEGIN', 'IF', 'DELIMITER',
+        'USE', 'TIMESTAMP', 'DEFAULT', 'NEW', 'OLD'
+    ];
+    keywords.sort((a, b) => b.length - a.length);
+    const kwRegex = new RegExp(`\\b(${keywords.join('|')})\\b`, 'gi');
+    escaped = escaped.replace(kwRegex, (match) => `<span class="sql-kw">${match.toUpperCase()}</span>`);
+
+    // 4. Highlight Common SQL Functions
+    const functions = ['COUNT', 'SUM', 'COALESCE', 'ABS', 'LAST_INSERT_ID', 'DATABASE', 'VERSION', 'CONCAT'];
+    const fnRegex = new RegExp(`\\b(${functions.join('|')})\\b`, 'gi');
+    escaped = escaped.replace(fnRegex, (match) => `<span class="sql-fn">${match.toUpperCase()}</span>`);
+
+    // 5. Highlight Table Names
+    const tables = ['Customers', 'Accounts', 'Transactions', 'Transfers', 'BankManagementDB'];
+    tables.forEach(table => {
+        const tRegex = new RegExp(`\\b${table}\\b`, 'g');
+        escaped = escaped.replace(tRegex, `<span class="sql-table">${table}</span>`);
+    });
+
+    // 6. Restore string literals
+    escaped = escaped.replace(/___STR_(\d+)___/g, (_, idx) => `<span class="sql-str">${strings[idx]}</span>`);
+
+    // 7. Restore comments
+    escaped = escaped.replace(/___COMMENT_(\d+)___/g, (_, idx) => `<span class="sql-comment">${comments[idx]}</span>`);
+
+    return escaped;
+}
+
+function renderSqlQueries(filter = currentSqlFilter, search = currentSqlSearch) {
+    currentSqlFilter = filter;
+    currentSqlSearch = search;
+
+    const container = document.getElementById('sqlCardsContainer');
+    if (!container) return;
+
+    // Filter queries
+    const qLower = search.trim().toLowerCase();
+    const filtered = sqlQueries.filter(item => {
+        const matchesSection = (filter === 'all' || item.section === filter);
+        const matchesSearch = !qLower || (
+            item.title.toLowerCase().includes(qLower) ||
+            item.description.toLowerCase().includes(qLower) ||
+            item.query.toLowerCase().includes(qLower) ||
+            item.badgeType.toLowerCase().includes(qLower) ||
+            item.route.toLowerCase().includes(qLower) ||
+            item.concepts.some(c => c.toLowerCase().includes(qLower))
+        );
+        return matchesSection && matchesSearch;
+    });
+
+    // Update section counts on filter pills
+    const countAll = document.getElementById('countAllSql');
+    if (countAll) countAll.textContent = sqlQueries.length;
+    ['dashboard', 'customers', 'accounts', 'transactions', 'transfers', 'triggers'].forEach(sec => {
+        const el = document.getElementById(`count${sec.charAt(0).toUpperCase() + sec.slice(1)}Sql`);
+        if (el) el.textContent = sqlQueries.filter(q => q.section === sec).length;
+    });
+
+    if (filtered.length === 0) {
+        container.innerHTML = `
+            <div class="card-panel" style="text-align: center; padding: 40px;">
+                <i class="fas fa-search" style="font-size: 2rem; color: var(--text-dim); margin-bottom: 12px;"></i>
+                <h4 style="color: var(--text-secondary);">No matching SQL queries found</h4>
+                <p style="font-size: 0.85rem; color: var(--text-dim); margin-top: 4px;">Try searching for another keyword or switch section filters.</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = filtered.map(item => {
+        const highlighted = highlightSql(item.query);
+        const conceptsHtml = item.concepts.map(c => `<span class="sql-concept-tag">${escapeHtml(c)}</span>`).join('');
+
+        return `
+            <div class="sql-query-card" id="query-${item.id}">
+                <div class="sql-card-header">
+                    <div class="sql-header-badges">
+                        <span class="sql-badge sql-badge-section">${escapeHtml(item.sectionLabel)}</span>
+                        <span class="sql-badge sql-badge-type">${escapeHtml(item.badgeType)}</span>
+                        <span class="sql-badge sql-badge-route">${escapeHtml(item.route)}</span>
+                    </div>
+                    <button class="btn-copy-sql" onclick="copySqlQuery('${item.id}')" id="copyBtn-${item.id}">
+                        <i class="far fa-copy"></i> Copy SQL
+                    </button>
+                </div>
+                <h4 class="sql-card-title">${escapeHtml(item.title)}</h4>
+                <p class="sql-card-desc">${escapeHtml(item.description)}</p>
+                
+                <pre class="sql-code-block"><code>${highlighted}</code></pre>
+                
+                <div class="sql-card-footer">
+                    <span style="font-size: 0.72rem; font-weight: 600; color: var(--text-dim); margin-right: 4px;">DBMS Concepts:</span>
+                    ${conceptsHtml}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function copySqlQuery(queryId) {
+    const item = sqlQueries.find(q => q.id === queryId);
+    if (!item) return;
+
+    navigator.clipboard.writeText(item.query).then(() => {
+        const btn = document.getElementById(`copyBtn-${queryId}`);
+        if (btn) {
+            btn.innerHTML = `<i class="fas fa-check"></i> Copied!`;
+            btn.classList.add('copied');
+            setTimeout(() => {
+                btn.innerHTML = `<i class="far fa-copy"></i> Copy SQL`;
+                btn.classList.remove('copied');
+            }, 2000);
+        }
+        showToast('SQL Query copied to clipboard!', 'success');
+    }).catch(err => {
+        showToast('Failed to copy SQL query', 'error');
+    });
+}
+window.copySqlQuery = copySqlQuery;
+
+function loadDatabaseView(filterCategory) {
+    if (filterCategory) {
+        currentSqlFilter = filterCategory;
+        document.querySelectorAll('.sql-filter-pill').forEach(pill => {
+            if (pill.dataset.section === filterCategory) {
+                pill.classList.add('active');
+            } else {
+                pill.classList.remove('active');
+            }
+        });
+    }
+    renderSqlQueries(currentSqlFilter, currentSqlSearch);
+    testDbConnectionQuick(true);
 }
 
 // ----------------------------------------------------------
@@ -729,8 +1500,62 @@ document.addEventListener('DOMContentLoaded', () => {
     const testDbBtn = document.getElementById('btnTestConnection');
     if (testDbBtn) {
         testDbBtn.addEventListener('click', async () => {
-            await testDbConnectionQuick();
+            switchView('database');
+            await testDbConnectionQuick(false);
             closeMobileSidebar();
+        });
+    }
+
+    // Dashboard Re-Sync Button
+    document.getElementById('btnSyncDashboard')?.addEventListener('click', async () => {
+        const syncBtn = document.getElementById('btnSyncDashboard');
+        const origHtml = syncBtn ? syncBtn.innerHTML : '';
+        if (syncBtn) syncBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span>Syncing...</span>`;
+        try {
+            await loadDashboard();
+            showToast('Core ledger metrics synchronized!', 'success');
+        } catch (e) {
+            showToast('Sync failed: ' + e.message, 'error');
+        } finally {
+            if (syncBtn) syncBtn.innerHTML = origHtml;
+        }
+    });
+
+    // Sidebar DB status card click -> open database view
+    const sidebarDbCard = document.querySelector('.db-status-card');
+    if (sidebarDbCard) {
+        sidebarDbCard.style.cursor = 'pointer';
+        sidebarDbCard.addEventListener('click', (e) => {
+            if (e.target.closest('#btnTestConnection')) return;
+            switchView('database');
+            closeMobileSidebar();
+        });
+    }
+
+    // In-view diagnostics test button
+    document.getElementById('btnTestDbSection')?.addEventListener('click', async () => {
+        await testDbConnectionQuick(false);
+    });
+
+    // SQL filter pills
+    document.querySelectorAll('.sql-filter-pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            document.querySelectorAll('.sql-filter-pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            const sec = pill.dataset.section || 'all';
+            renderSqlQueries(sec, currentSqlSearch);
+        });
+    });
+
+    // SQL search input
+    const sqlSearchInput = document.getElementById('sqlQuerySearch');
+    if (sqlSearchInput) {
+        let sqlSearchTimeout;
+        sqlSearchInput.addEventListener('input', (e) => {
+            clearTimeout(sqlSearchTimeout);
+            sqlSearchTimeout = setTimeout(() => {
+                renderSqlQueries(currentSqlFilter, e.target.value.trim());
+            }, 200);
         });
     }
 

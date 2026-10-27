@@ -217,7 +217,13 @@ Horizon Bank features an intelligent, resilient database proxy architecture (`sr
    - Dedicated transfer tracking log showing sender account, receiver account, transfer amount (₹), and timestamp.
    - Transfer modal with account validation, self-transfer prevention, and real-time balance verification.
 
-6. **Institutional Dark Theme & Mobile Experience:**
+6. **Database Diagnostics & Project SQL Queries Directory (`#database`):**
+   - **Unified DB Health Inspector:** Real-time MySQL connection diagnostics showing active database name, host, ping latency, and verified table count with an interactive test button.
+   - **Complete, Un-truncated SQL Queries:** Complete showcase of every SQL query powering each module (Dashboard, Customers, Accounts, Transactions, ACID Transfers, Triggers & DDL).
+   - **Interactive Filtering & Search:** Category filter pills and live multi-column search by SQL keywords (e.g. `JOIN`, `FOR UPDATE`, `TRIGGER`, `GROUP BY`).
+   - **1-Click SQL Copy & Section Shortcuts:** Direct "View Section SQL" shortcuts in every module header and instant clipboard copy with visual confirmation.
+
+7. **Institutional Dark Theme & Mobile Experience:**
    - Minimal institutional color palette (deep slate, emerald green, and cobalt accents).
    - Fully responsive navigation with a slide-out mobile drawer and touch-friendly controls.
    - Interactive Group Members modal in header displaying the project team and academic credentials.

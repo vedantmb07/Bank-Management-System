@@ -69,6 +69,14 @@
                         <span>Inter-Acc Transfers</span>
                     </a>
                 </li>
+
+                <li class="nav-label">DBMS & Schema</li>
+                <li class="nav-item" data-view="database">
+                    <a href="#database" id="navDatabase">
+                        <i class="fas fa-database"></i>
+                        <span>Database & SQL</span>
+                    </a>
+                </li>
             </ul>
 
             <div class="sidebar-footer">
@@ -192,11 +200,104 @@
 
                 <!-- ================= 1. VIEW: DASHBOARD ================= -->
                 <section id="view-dashboard" class="view-section active-view">
-                    <!-- KPI Metric Cards -->
+
+                    <!-- Executive Treasury Hero Banner -->
+                    <div class="bank-hero-panel">
+                        <div class="bank-hero-header">
+                            <div class="bank-hero-brand">
+                                <div class="bank-badge-icon">
+                                    <i class="fas fa-university"></i>
+                                </div>
+                                <div>
+                                    <div class="bank-hero-tag">
+                                        <span class="pulse-dot-green"></span>
+                                        <span>HORIZON INSTITUTIONAL TREASURY • CORE BANKING</span>
+                                    </div>
+                                    <h2 class="bank-hero-title">Master Financial Reserves & Liquidity Portal</h2>
+                                </div>
+                            </div>
+                            <div class="bank-hero-controls">
+                                <div class="hero-chip">
+                                    <i class="fas fa-coins text-gold"></i>
+                                    <span>INR (₹) Base Currency</span>
+                                </div>
+                                <button class="btn-hero-sync" id="btnSyncDashboard" title="Synchronize Core Ledger Metrics">
+                                    <i class="fas fa-sync-alt"></i> <span>Re-Sync</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Big Liquidity Display -->
+                        <div class="bank-hero-balance-section">
+                            <div class="hero-balance-label">
+                                <span>CONSOLIDATED VAULT LIQUIDITY (TOTAL DEPOSITS)</span>
+                                <span class="hero-status-pill"><i class="fas fa-shield-alt"></i> 100% Capital Adequacy</span>
+                            </div>
+                            <div class="hero-balance-row">
+                                <span class="hero-currency-symbol">₹</span>
+                                <span class="hero-main-balance" id="heroTotalLiquidity">0.00</span>
+                                <span class="hero-reserve-tag"><i class="fas fa-lock"></i> Tier-1 Capital Secured</span>
+                            </div>
+                            <p class="hero-balance-sub">
+                                Reconciled continuously across all active customer portfolios • Automated auditing enforced by MySQL database triggers.
+                            </p>
+                        </div>
+
+                        <!-- Hero Financial Metrics Strip -->
+                        <div class="bank-hero-metrics-strip">
+                            <div class="hero-strip-item">
+                                <span class="hero-strip-label"><i class="fas fa-wallet"></i> Capital Portfolios</span>
+                                <span class="hero-strip-value" id="statTotalAccounts">0</span>
+                                <span class="hero-strip-sub" id="statActiveAccounts">0 Active</span>
+                            </div>
+                            <div class="hero-strip-divider"></div>
+                            <div class="hero-strip-item">
+                                <span class="hero-strip-label"><i class="fas fa-users-viewfinder"></i> KYC Verified Clients</span>
+                                <span class="hero-strip-value" id="statTotalCustomers">0</span>
+                                <span class="hero-strip-sub">AML & KYC Compliant</span>
+                            </div>
+                            <div class="hero-strip-divider"></div>
+                            <div class="hero-strip-item">
+                                <span class="hero-strip-label"><i class="fas fa-paper-plane"></i> Inter-Account Settlements</span>
+                                <span class="hero-strip-value" id="statTransferVolume">₹0.00</span>
+                                <span class="hero-strip-sub"><span id="statTotalTransfers">0</span> transfers executed</span>
+                            </div>
+                            <div class="hero-strip-divider"></div>
+                            <div class="hero-strip-item">
+                                <span class="hero-strip-label"><i class="fas fa-scale-balanced"></i> Average Portfolio</span>
+                                <span class="hero-strip-value" id="statAvgCustomerBalance">₹0.00</span>
+                                <span class="hero-strip-sub text-emerald"><i class="fas fa-check-circle"></i> Zero Ledger Drift</span>
+                            </div>
+                        </div>
+
+                        <!-- Integrated Banking Action Bar -->
+                        <div class="bank-hero-actions-bar">
+                            <button class="btn btn-primary btn-sm btn-action-glow" onclick="openModal('transferModal')">
+                                <i class="fas fa-exchange-alt"></i> Inter-Account Transfer
+                            </button>
+                            <button class="btn btn-emerald btn-sm" id="btnDeposit">
+                                <i class="fas fa-arrow-down"></i> Deposit Money
+                            </button>
+                            <button class="btn btn-rose btn-sm" id="btnWithdraw">
+                                <i class="fas fa-arrow-up"></i> Withdraw Funds
+                            </button>
+                            <button class="btn btn-outline btn-sm" id="btnNewAccount">
+                                <i class="fas fa-plus-circle"></i> Open Account
+                            </button>
+                            <button class="btn btn-outline btn-sm" id="btnNewCustomer">
+                                <i class="fas fa-user-plus"></i> Onboard Customer
+                            </button>
+                            <button class="btn btn-outline btn-sm btn-section-sql" onclick="switchView('database', 'dashboard')" title="Inspect Dashboard SQL Queries">
+                                <i class="fas fa-code"></i> Inspect SQL
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 4 Institutional Financial Metric Cards -->
                     <div class="stats-grid">
                         <div class="stat-card" style="--card-accent: #059669;">
                             <div class="stat-info">
-                                <div class="stat-label">Total Deposits (Liquidity)</div>
+                                <div class="stat-label">Total Liquid Deposits</div>
                                 <div class="stat-value" id="statTotalLiquidity">₹0.00</div>
                                 <div class="stat-sub">Across all active accounts</div>
                             </div>
@@ -207,9 +308,9 @@
 
                         <div class="stat-card" style="--card-accent: #2563eb;">
                             <div class="stat-info">
-                                <div class="stat-label">Total Accounts</div>
-                                <div class="stat-value" id="statTotalAccounts">0</div>
-                                <div class="stat-sub" id="statActiveAccounts">0 Active</div>
+                                <div class="stat-label">Managed Portfolios</div>
+                                <div class="stat-value" id="statCardTotalAccounts">0</div>
+                                <div class="stat-sub" id="statCardActiveAccounts">0 Active Accounts</div>
                             </div>
                             <div class="stat-icon icon-blue">
                                 <i class="fas fa-credit-card"></i>
@@ -218,9 +319,9 @@
 
                         <div class="stat-card" style="--card-accent: #475569;">
                             <div class="stat-info">
-                                <div class="stat-label">Registered Customers</div>
-                                <div class="stat-value" id="statTotalCustomers">0</div>
-                                <div class="stat-sub">KYC Verified profiles</div>
+                                <div class="stat-label">KYC Verified Customers</div>
+                                <div class="stat-value" id="statCardTotalCustomers">0</div>
+                                <div class="stat-sub">Verified Customer Profiles</div>
                             </div>
                             <div class="stat-icon icon-slate">
                                 <i class="fas fa-user-shield"></i>
@@ -229,9 +330,9 @@
 
                         <div class="stat-card" style="--card-accent: #0284c7;">
                             <div class="stat-info">
-                                <div class="stat-label">Total Transfers Volume</div>
-                                <div class="stat-value" id="statTransferVolume">₹0.00</div>
-                                <div class="stat-sub"><span id="statTotalTransfers">0</span> inter-account transfers</div>
+                                <div class="stat-label">Gross Transfer Volume</div>
+                                <div class="stat-value" id="statCardTransferVolume">₹0.00</div>
+                                <div class="stat-sub"><span id="statCardTotalTransfers">0</span> inter-account transfers</div>
                             </div>
                             <div class="stat-icon icon-sky">
                                 <i class="fas fa-paper-plane"></i>
@@ -239,66 +340,121 @@
                         </div>
                     </div>
 
-                    <!-- Quick Action Bar -->
-                    <div class="quick-action-strip">
-                        <div class="strip-text">
-                            <h3>Quick Financial Operations</h3>
-                            <p>Instant deposit, withdrawal, funds transfer, or account registration</p>
-                        </div>
-                        <div class="strip-buttons">
-                            <button class="btn btn-emerald btn-sm" id="btnDeposit">
-                                <i class="fas fa-arrow-down"></i> Deposit Money
-                            </button>
-                            <button class="btn btn-rose btn-sm" id="btnWithdraw">
-                                <i class="fas fa-arrow-up"></i> Withdraw Funds
-                            </button>
-                            <button class="btn btn-primary btn-sm" onclick="openModal('transferModal')">
-                                <i class="fas fa-random"></i> Quick Transfer
-                            </button>
-                            <button class="btn btn-outline btn-sm" id="btnNewAccount">
-                                <i class="fas fa-plus-circle"></i> Open Account
-                            </button>
-                            <button class="btn btn-outline btn-sm" id="btnNewCustomer">
-                                <i class="fas fa-user-plus"></i> Add Customer
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Dashboard Columns: Breakdown & Recent Activity -->
+                    <!-- Dashboard Columns: Capital Structure & Core Banking Governance -->
                     <div class="dashboard-columns">
-                        <!-- Account Types Distribution -->
+                        <!-- Capital Allocation by Account Portfolio -->
                         <div class="card-panel">
                             <div class="card-header-flex">
-                                <h3><i class="fas fa-chart-bar" style="color: #3b82f6;"></i> Portfolio by Account Type</h3>
+                                <div>
+                                    <h3><i class="fas fa-chart-pie" style="color: #2563eb;"></i> Capital Structure by Portfolio</h3>
+                                    <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">Dynamic reserve distribution across savings, checking, and term deposits</p>
+                                </div>
                                 <span class="badge badge-type">Live Breakdown</span>
                             </div>
                             <div id="accountTypesBreakdown">
                                 <div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading breakdown...</div>
                             </div>
+
+                            <!-- Portfolio Security Invariant Note -->
+                            <div class="portfolio-security-note">
+                                <i class="fas fa-shield-halved text-emerald"></i>
+                                <span>Zero penalty liquidity • In-memory emulated & MySQL 8.0 live synchronization</span>
+                            </div>
                         </div>
 
-                        <!-- Recent Transactions -->
+                        <!-- Core Banking Governance & System Invariants -->
                         <div class="card-panel">
                             <div class="card-header-flex">
-                                <h3><i class="fas fa-history" style="color: #60a5fa;"></i> Recent Ledger Transactions</h3>
-                                <button class="btn btn-sm btn-outline" onclick="switchView('transactions')">View All</button>
+                                <div>
+                                    <h3><i class="fas fa-award" style="color: #10b981;"></i> Banking System Governance</h3>
+                                    <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">Relational database safeguards enforcing real financial integrity</p>
+                                </div>
+                                <button class="btn btn-outline btn-xs btn-section-sql" onclick="switchView('database', 'triggers')">
+                                    <i class="fas fa-code"></i> DDL & Triggers
+                                </button>
                             </div>
-                            <div class="table-responsive">
-                                <table class="banking-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Acc #</th>
-                                            <th>Customer</th>
-                                            <th>Type</th>
-                                            <th>Amount</th>
-                                            <th>Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="recentTransactionsBody">
-                                        <tr><td colspan="5" class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>
-                                    </tbody>
-                                </table>
+
+                            <div class="governance-grid">
+                                <div class="governance-item">
+                                    <div class="gov-icon icon-blue"><i class="fas fa-lock"></i></div>
+                                    <div class="gov-content">
+                                        <div class="gov-title-row">
+                                            <span class="gov-title">Strict ACID Isolation</span>
+                                            <span class="gov-pill">Active</span>
+                                        </div>
+                                        <p class="gov-desc">Pessimistic row locking (<code>FOR UPDATE</code>) eliminates race conditions & prevents double-spending.</p>
+                                    </div>
+                                </div>
+
+                                <div class="governance-item">
+                                    <div class="gov-icon icon-emerald"><i class="fas fa-bolt"></i></div>
+                                    <div class="gov-content">
+                                        <div class="gov-title-row">
+                                            <span class="gov-title">Automated Trigger Auditing</span>
+                                            <span class="gov-pill">Enforced</span>
+                                        </div>
+                                        <p class="gov-desc"><code>after_account_update</code> trigger guarantees immutable ledger records with zero manual drift.</p>
+                                    </div>
+                                </div>
+
+                                <div class="governance-item">
+                                    <div class="gov-icon icon-sky"><i class="fas fa-sitemap"></i></div>
+                                    <div class="gov-content">
+                                        <div class="gov-title-row">
+                                            <span class="gov-title">Referential Cascade Integrity</span>
+                                            <span class="gov-pill">Verified</span>
+                                        </div>
+                                        <p class="gov-desc">Foreign keys enforce <code>ON DELETE CASCADE</code>, preventing orphaned accounts or transactions.</p>
+                                    </div>
+                                </div>
+
+                                <div class="governance-item">
+                                    <div class="gov-icon icon-slate"><i class="fas fa-database"></i></div>
+                                    <div class="gov-content">
+                                        <div class="gov-title-row">
+                                            <span class="gov-title">Enterprise MySQL Catalog</span>
+                                            <span class="gov-pill">Connected</span>
+                                        </div>
+                                        <p class="gov-desc">Pooled connection to <code>BankManagementDB</code> with auto-recovery and live health telemetry.</p>
+                                    </div>
+                                </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Real-Time Settlement Ledger Feed -->
+                    <div class="card-panel">
+                        <div class="card-header-flex">
+                            <div>
+                                <h3><i class="fas fa-history" style="color: #60a5fa;"></i> Live Settlement Ledger Feed</h3>
+                                <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">Real-time stream of verified deposits, withdrawals, and inter-account funds movement</p>
+                            </div>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button class="btn btn-outline btn-sm btn-section-sql" onclick="switchView('database', 'dashboard')" title="Inspect Dashboard SQL Queries">
+                                    <i class="fas fa-code"></i> View Dashboard SQL
+                                </button>
+                                <button class="btn btn-sm btn-outline" onclick="switchView('transactions')">
+                                    <i class="fas fa-list-check"></i> View Full Ledger
+                                </button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="banking-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tx Reference</th>
+                                        <th>Account & Customer</th>
+                                        <th>Type</th>
+                                        <th>Settlement Amount</th>
+                                        <th>Post-Balance</th>
+                                        <th>Status</th>
+                                        <th>Settlement Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentTransactionsBody">
+                                    <tr><td colspan="7" class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading settlement feed...</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </section>
@@ -311,9 +467,14 @@
                                 <h3><i class="fas fa-users" style="color: #3b82f6;"></i> Customer Management</h3>
                                 <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">Registered clients and their associated bank accounts</p>
                             </div>
-                            <button class="btn btn-primary" onclick="openModal('newCustomerModal')">
-                                <i class="fas fa-user-plus"></i> Register New Customer
-                            </button>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button class="btn btn-outline btn-sm btn-section-sql" onclick="switchView('database', 'customers')" title="Inspect SQL Queries used in Customers Section">
+                                    <i class="fas fa-code"></i> View Section SQL
+                                </button>
+                                <button class="btn btn-primary" onclick="openModal('newCustomerModal')">
+                                    <i class="fas fa-user-plus"></i> Register New Customer
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Search Bar -->
@@ -354,9 +515,14 @@
                                 <h3><i class="fas fa-wallet" style="color:#06b6d4;"></i> Bank Accounts</h3>
                                 <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">Savings, Checking, and Fixed Deposit accounts</p>
                             </div>
-                            <button class="btn btn-primary" onclick="openModal('newAccountModal')">
-                                <i class="fas fa-plus-circle"></i> Open New Account
-                            </button>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button class="btn btn-outline btn-sm btn-section-sql" onclick="switchView('database', 'accounts')" title="Inspect SQL Queries used in Accounts Section">
+                                    <i class="fas fa-code"></i> View Section SQL
+                                </button>
+                                <button class="btn btn-primary" onclick="openModal('newAccountModal')">
+                                    <i class="fas fa-plus-circle"></i> Open New Account
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Filters Bar -->
@@ -406,7 +572,10 @@
                                 <h3><i class="fas fa-receipt" style="color:#10b981;"></i> Transactions Ledger</h3>
                                 <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">Automated transactional audit trail recorded by MySQL triggers</p>
                             </div>
-                            <div style="display: flex; gap: 10px;">
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button class="btn btn-outline btn-sm btn-section-sql" onclick="switchView('database', 'transactions')" title="Inspect SQL Queries used in Transactions Section">
+                                    <i class="fas fa-code"></i> View Section SQL
+                                </button>
                                 <button class="btn btn-emerald btn-sm" onclick="openModal('depositModal')">
                                     <i class="fas fa-arrow-down"></i> Deposit
                                 </button>
@@ -459,9 +628,14 @@
                                 <h3><i class="fas fa-random" style="color:#3b82f6;"></i> Inter-Account Transfers Ledger</h3>
                                 <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">Full ACID transactional transfer ledger between sender and receiver accounts</p>
                             </div>
-                            <button class="btn btn-primary" onclick="openModal('transferModal')">
-                                <i class="fas fa-exchange-alt"></i> New Transfer
-                            </button>
+                            <div style="display: flex; gap: 8px; align-items: center;">
+                                <button class="btn btn-outline btn-sm btn-section-sql" onclick="switchView('database', 'transfers')" title="Inspect SQL Queries used in ACID Transfers Section">
+                                    <i class="fas fa-code"></i> View Section SQL
+                                </button>
+                                <button class="btn btn-primary" onclick="openModal('transferModal')">
+                                    <i class="fas fa-exchange-alt"></i> New Transfer
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Transfers Table -->
@@ -480,6 +654,82 @@
                                     <!-- Populated via JS -->
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- ================= 6. VIEW: DATABASE & SQL QUERIES ================= -->
+                <section id="view-database" class="view-section">
+                    <!-- DB Connection & Diagnostics Card -->
+                    <div class="card-panel db-diagnostics-card">
+                        <div class="card-header-flex">
+                            <div>
+                                <div class="db-section-pill">
+                                    <span class="pulse-dot"></span>
+                                    <span id="dbDiagStatusBadge">MySQL 8.0 Live Connection</span>
+                                </div>
+                                <h3 style="margin-top: 10px;"><i class="fas fa-server" style="color: var(--primary);"></i> Database Diagnostics & Live Connection Test</h3>
+                                <p style="font-size: 0.82rem; color: var(--text-dim); margin-top: 4px;">Direct connection status, engine parameters, latency check, and schema validation</p>
+                            </div>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button class="btn btn-primary" id="btnTestDbSection">
+                                    <i class="fas fa-vial"></i> Run Connection Test
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="db-metrics-grid">
+                            <div class="db-metric-box">
+                                <span class="db-metric-label"><i class="fas fa-database"></i> Database Name</span>
+                                <span class="db-metric-value" id="diagDbName">BankManagementDB</span>
+                            </div>
+                            <div class="db-metric-box">
+                                <span class="db-metric-label"><i class="fas fa-network-wired"></i> Host & Port</span>
+                                <span class="db-metric-value" id="diagDbHost">127.0.0.1:3306</span>
+                            </div>
+                            <div class="db-metric-box">
+                                <span class="db-metric-label"><i class="fas fa-tachometer-alt"></i> Ping Latency</span>
+                                <span class="db-metric-value" id="diagDbLatency">- ms</span>
+                            </div>
+                            <div class="db-metric-box">
+                                <span class="db-metric-label"><i class="fas fa-layer-group"></i> Active Tables</span>
+                                <span class="db-metric-value" id="diagDbTables">4 Tables Verified</span>
+                            </div>
+                        </div>
+
+                        <div class="db-status-banner" id="diagStatusBanner">
+                            <i class="fas fa-check-circle" id="diagStatusIcon" style="color: var(--emerald);"></i>
+                            <span id="diagStatusMessage">Ready to verify live MySQL connection or cloud fallback. Click "Run Connection Test".</span>
+                        </div>
+                    </div>
+
+                    <!-- SQL Queries Directory -->
+                    <div class="card-panel" style="margin-top: 24px;">
+                        <div class="card-header-flex">
+                            <div>
+                                <h3><i class="fas fa-code" style="color: #6366f1;"></i> Project SQL Queries by Section</h3>
+                                <p style="font-size: 0.82rem; color: var(--text-dim); margin-top: 4px;">Complete, un-truncated SQL queries powering each banking module, complete with triggers, ACID transactions, and aggregations</p>
+                            </div>
+                            <div class="sql-search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" id="sqlQuerySearch" placeholder="Search queries (e.g. JOIN, TRIGGER, ACID, UPDATE, Customers)...">
+                            </div>
+                        </div>
+
+                        <!-- Filter Pills -->
+                        <div class="sql-filters-bar">
+                            <button class="sql-filter-pill active" data-section="all">All Queries (<span id="countAllSql">0</span>)</button>
+                            <button class="sql-filter-pill" data-section="dashboard"><i class="fas fa-chart-pie"></i> Dashboard (<span id="countDashboardSql">0</span>)</button>
+                            <button class="sql-filter-pill" data-section="customers"><i class="fas fa-users"></i> Customers (<span id="countCustomersSql">0</span>)</button>
+                            <button class="sql-filter-pill" data-section="accounts"><i class="fas fa-wallet"></i> Accounts (<span id="countAccountsSql">0</span>)</button>
+                            <button class="sql-filter-pill" data-section="transactions"><i class="fas fa-receipt"></i> Transactions (<span id="countTransactionsSql">0</span>)</button>
+                            <button class="sql-filter-pill" data-section="transfers"><i class="fas fa-random"></i> Transfers & ACID (<span id="countTransfersSql">0</span>)</button>
+                            <button class="sql-filter-pill" data-section="triggers"><i class="fas fa-bolt"></i> Triggers & Schema (<span id="countTriggersSql">0</span>)</button>
+                        </div>
+
+                        <!-- SQL Query Cards Stream -->
+                        <div class="sql-cards-list" id="sqlCardsContainer">
+                            <!-- Populated dynamically via JS -->
                         </div>
                     </div>
                 </section>

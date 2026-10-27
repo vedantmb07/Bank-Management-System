@@ -1545,8 +1545,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const origHtml = syncBtn ? syncBtn.innerHTML : '';
         if (syncBtn) syncBtn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> <span>Syncing...</span>`;
         try {
-            await loadDashboard();
-            showToast('Core ledger metrics synchronized!', 'success');
+            await Promise.all([
+                loadDashboard(),
+                populateCustomerDropdown(),
+                populateAccountDropdowns()
+            ]);
+            if (state.currentView === 'customers') await loadCustomers();
+            if (state.currentView === 'accounts') await loadAccounts();
+            if (state.currentView === 'transactions') await loadTransactions();
+            if (state.currentView === 'transfers') await loadTransfers();
+            showToast('Core ledger & database state synchronized!', 'success');
         } catch (e) {
             showToast('Sync failed: ' + e.message, 'error');
         } finally {

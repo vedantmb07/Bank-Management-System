@@ -65,16 +65,90 @@ const showToast = (messageOrType, typeOrMessage = 'success') => {
     }, 4000);
 };
 
-// Modal helpers
-const openModal = (id) => {
+// Modal helpers with automated selector population
+async function populateAccountDropdowns() {
+    try {
+        const res = await api.getAccounts({ status: 'ACTIVE' });
+        if (!res.success) return;
+
+        const options = res.data.map(a => `
+            <option value="${a.account_number}">
+                #${a.account_number} - ${a.first_name} ${a.last_name} (${formatCurrency(a.balance)} | ${a.account_type})
+            </option>
+        `).join('');
+
+        const depositSel = document.getElementById('depositAccountSelect');
+        const withdrawSel = document.getElementById('withdrawAccountSelect');
+        const transferSenderSel = document.getElementById('transferSenderSelect');
+        const transferReceiverSel = document.getElementById('transferReceiverSelect');
+
+        if (depositSel) depositSel.innerHTML = `<option value="">Select Account...</option>` + options;
+        if (withdrawSel) withdrawSel.innerHTML = `<option value="">Select Account...</option>` + options;
+        if (transferSenderSel) transferSenderSel.innerHTML = `<option value="">Select Sender Account...</option>` + options;
+        if (transferReceiverSel) transferReceiverSel.innerHTML = `<option value="">Select Receiver Account...</option>` + options;
+    } catch (e) {
+        console.error('Failed to populate account dropdowns', e);
+    }
+}
+
+async function populateCustomerDropdown() {
+    try {
+        const res = await api.getCustomers();
+        if (!res.success) return;
+
+        const custSel = document.getElementById('accountCustomerSelect');
+        if (custSel) {
+            custSel.innerHTML = `<option value="">Select Customer...</option>` + res.data.map(c => `
+                <option value="${c.customer_id}">#${c.customer_id} - ${c.first_name} ${c.last_name} (${c.email})</option>
+            `).join('');
+        }
+    } catch (e) {
+        console.error('Failed to populate customer dropdown', e);
+    }
+}
+
+async function openModal(id) {
+    try {
+        if (id === 'newAccountModal') {
+            const custSel = document.getElementById('accountCustomerSelect');
+            const prevVal = custSel ? custSel.value : '';
+            await populateCustomerDropdown();
+            if (custSel && prevVal) custSel.value = prevVal;
+        } else if (id === 'depositModal') {
+            const sel = document.getElementById('depositAccountSelect');
+            const prevVal = sel ? sel.value : '';
+            await populateAccountDropdowns();
+            if (sel && prevVal) sel.value = prevVal;
+        } else if (id === 'withdrawModal') {
+            const sel = document.getElementById('withdrawAccountSelect');
+            const prevVal = sel ? sel.value : '';
+            await populateAccountDropdowns();
+            if (sel && prevVal) sel.value = prevVal;
+        } else if (id === 'transferModal') {
+            const sSel = document.getElementById('transferSenderSelect');
+            const rSel = document.getElementById('transferReceiverSelect');
+            const prevS = sSel ? sSel.value : '';
+            const prevR = rSel ? rSel.value : '';
+            await populateAccountDropdowns();
+            if (sSel && prevS) sSel.value = prevS;
+            if (rSel && prevR) rSel.value = prevR;
+        }
+    } catch (err) {
+        console.warn('Error pre-populating modal options:', err);
+    }
     const modal = document.getElementById(id);
     if (modal) modal.classList.add('open');
-};
+}
 
-const closeModal = (id) => {
+function closeModal(id) {
     const modal = document.getElementById(id);
     if (modal) modal.classList.remove('open');
-};
+}
+
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.populateAccountDropdowns = populateAccountDropdowns;
+window.populateCustomerDropdown = populateCustomerDropdown;
 
 // Close modal when clicking outside
 window.addEventListener('click', (e) => {
@@ -1217,48 +1291,7 @@ function loadDatabaseView(filterCategory) {
 // MODAL ACTIONS & FORM SUBMISSIONS
 // ----------------------------------------------------------
 
-// Populate account selectors in modals
-async function populateAccountDropdowns() {
-    try {
-        const res = await api.getAccounts({ status: 'ACTIVE' });
-        if (!res.success) return;
-
-        const options = res.data.map(a => `
-            <option value="${a.account_number}">
-                #${a.account_number} - ${a.first_name} ${a.last_name} (${formatCurrency(a.balance)} | ${a.account_type})
-            </option>
-        `).join('');
-
-        const depositSel = document.getElementById('depositAccountSelect');
-        const withdrawSel = document.getElementById('withdrawAccountSelect');
-        const transferSenderSel = document.getElementById('transferSenderSelect');
-        const transferReceiverSel = document.getElementById('transferReceiverSelect');
-
-        if (depositSel) depositSel.innerHTML = `<option value="">Select Account...</option>` + options;
-        if (withdrawSel) withdrawSel.innerHTML = `<option value="">Select Account...</option>` + options;
-        if (transferSenderSel) transferSenderSel.innerHTML = `<option value="">Select Sender Account...</option>` + options;
-        if (transferReceiverSel) transferReceiverSel.innerHTML = `<option value="">Select Receiver Account...</option>` + options;
-    } catch (e) {
-        console.error('Failed to populate account dropdowns', e);
-    }
-}
-
-// Populate customer selector for Open Account modal
-async function populateCustomerDropdown() {
-    try {
-        const res = await api.getCustomers();
-        if (!res.success) return;
-
-        const custSel = document.getElementById('accountCustomerSelect');
-        if (custSel) {
-            custSel.innerHTML = `<option value="">Select Customer...</option>` + res.data.map(c => `
-                <option value="${c.customer_id}">#${c.customer_id} - ${c.first_name} ${c.last_name} (${c.email})</option>
-            `).join('');
-        }
-    } catch (e) {
-        console.error('Failed to populate customer dropdown', e);
-    }
-}
+// (Dropdown helper functions declared above and attached to window)
 
 // Action button triggers from table
 window.prepareDeposit = async (accNum) => {
@@ -1629,19 +1662,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const phone = document.getElementById('custPhone').value.trim();
         const address = document.getElementById('custAddress').value.trim();
 
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const origBtnText = submitBtn ? submitBtn.innerHTML : '';
+        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registering...';
+
         try {
             const res = await api.createCustomer({ first_name, last_name, email, phone, address });
             if (res.success) {
                 showToast(`Customer ${first_name} ${last_name} created successfully!`, 'success');
                 closeModal('newCustomerModal');
                 e.target.reset();
-                loadCustomers();
-                loadDashboard();
+                await populateCustomerDropdown();
+                await Promise.all([loadCustomers(), loadDashboard()]);
             } else {
                 showToast(res.message, 'error');
             }
         } catch (err) {
             showToast(err.message, 'error');
+        } finally {
+            if (submitBtn) submitBtn.innerHTML = origBtnText;
         }
     });
 
@@ -1652,19 +1691,30 @@ document.addEventListener('DOMContentLoaded', () => {
         const account_type = document.getElementById('accountTypeSelect').value;
         const initial_balance = document.getElementById('accountInitialBalance').value;
 
+        if (!customer_id) {
+            showToast('Please select a customer for this account.', 'error');
+            return;
+        }
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const origBtnText = submitBtn ? submitBtn.innerHTML : '';
+        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+
         try {
             const res = await api.createAccount({ customer_id, account_type, initial_balance });
             if (res.success) {
                 showToast(`Account #${res.data.account_number} created with balance ${formatCurrency(res.data.balance)}!`, 'success');
                 closeModal('newAccountModal');
                 e.target.reset();
-                loadAccounts();
-                loadDashboard();
+                await populateAccountDropdowns();
+                await Promise.all([loadAccounts(), loadDashboard(), loadCustomers()]);
             } else {
                 showToast(res.message, 'error');
             }
         } catch (err) {
             showToast(err.message, 'error');
+        } finally {
+            if (submitBtn) submitBtn.innerHTML = origBtnText;
         }
     });
 
@@ -1674,20 +1724,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const account_number = document.getElementById('depositAccountSelect').value;
         const amount = document.getElementById('depositAmount').value;
 
+        if (!account_number) {
+            showToast('Please select an account for deposit.', 'error');
+            return;
+        }
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const origBtnText = submitBtn ? submitBtn.innerHTML : '';
+        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
         try {
             const res = await api.deposit(account_number, amount);
             if (res.success) {
                 showToast(res.message, 'success');
                 closeModal('depositModal');
                 e.target.reset();
-                loadDashboard();
-                if (state.currentView === 'accounts') loadAccounts();
-                if (state.currentView === 'transactions') loadTransactions();
+                await populateAccountDropdowns();
+                await Promise.all([
+                    loadDashboard(),
+                    loadAccounts(),
+                    state.currentView === 'transactions' ? loadTransactions() : Promise.resolve(),
+                    loadCustomers()
+                ]);
             } else {
                 showToast(res.message, 'error');
             }
         } catch (err) {
             showToast(err.message, 'error');
+        } finally {
+            if (submitBtn) submitBtn.innerHTML = origBtnText;
         }
     });
 
@@ -1697,20 +1762,35 @@ document.addEventListener('DOMContentLoaded', () => {
         const account_number = document.getElementById('withdrawAccountSelect').value;
         const amount = document.getElementById('withdrawAmount').value;
 
+        if (!account_number) {
+            showToast('Please select an account for withdrawal.', 'error');
+            return;
+        }
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const origBtnText = submitBtn ? submitBtn.innerHTML : '';
+        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
         try {
             const res = await api.withdraw(account_number, amount);
             if (res.success) {
                 showToast(res.message, 'success');
                 closeModal('withdrawModal');
                 e.target.reset();
-                loadDashboard();
-                if (state.currentView === 'accounts') loadAccounts();
-                if (state.currentView === 'transactions') loadTransactions();
+                await populateAccountDropdowns();
+                await Promise.all([
+                    loadDashboard(),
+                    loadAccounts(),
+                    state.currentView === 'transactions' ? loadTransactions() : Promise.resolve(),
+                    loadCustomers()
+                ]);
             } else {
                 showToast(res.message, 'error');
             }
         } catch (err) {
             showToast(err.message, 'error');
+        } finally {
+            if (submitBtn) submitBtn.innerHTML = origBtnText;
         }
     });
 
@@ -1721,10 +1801,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const receiver_account = document.getElementById('transferReceiverSelect').value;
         const amount = document.getElementById('transferAmount').value;
 
+        if (!sender_account || !receiver_account) {
+            showToast('Please select both sender and receiver accounts.', 'error');
+            return;
+        }
+
         if (sender_account === receiver_account) {
             showToast('Sender and receiver accounts cannot be the same.', 'error');
             return;
         }
+
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const origBtnText = submitBtn ? submitBtn.innerHTML : '';
+        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Transferring...';
 
         try {
             const res = await api.transfer(sender_account, receiver_account, amount);
@@ -1732,15 +1821,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(res.message, 'success');
                 closeModal('transferModal');
                 e.target.reset();
-                loadDashboard();
-                if (state.currentView === 'accounts') loadAccounts();
-                if (state.currentView === 'transfers') loadTransfers();
-                if (state.currentView === 'transactions') loadTransactions();
+                await populateAccountDropdowns();
+                await Promise.all([
+                    loadDashboard(),
+                    loadAccounts(),
+                    loadTransfers(),
+                    loadTransactions(),
+                    loadCustomers()
+                ]);
             } else {
                 showToast(res.message, 'error');
             }
         } catch (err) {
             showToast(err.message, 'error');
+        } finally {
+            if (submitBtn) submitBtn.innerHTML = origBtnText;
         }
     });
 

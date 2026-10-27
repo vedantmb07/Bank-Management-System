@@ -3,6 +3,13 @@
 // Used when real MySQL is unreachable (e.g., hosted on Vercel)
 // ==========================================================
 
+const fs = require('fs');
+const path = require('path');
+
+const STORE_PATH = process.env.VERCEL
+    ? path.join('/tmp', 'bank_db_store.json')
+    : path.join(__dirname, 'mock_db_store.json');
+
 const inMemoryDB = {
     customers: [
         {
@@ -123,6 +130,45 @@ let nextCustomerId = 4;
 let nextAccountNumber = 1004;
 let nextTransactionId = 6;
 let nextTransferId = 3;
+
+function persistStore() {
+    try {
+        const payload = {
+            customers: inMemoryDB.customers,
+            accounts: inMemoryDB.accounts,
+            transactions: inMemoryDB.transactions,
+            transfers: inMemoryDB.transfers,
+            nextCustomerId,
+            nextAccountNumber,
+            nextTransactionId,
+            nextTransferId
+        };
+        fs.writeFileSync(STORE_PATH, JSON.stringify(payload, null, 2), 'utf-8');
+    } catch (e) {
+        // silent fail if read-only
+    }
+}
+
+function loadStore() {
+    try {
+        if (fs.existsSync(STORE_PATH)) {
+            const raw = fs.readFileSync(STORE_PATH, 'utf-8');
+            const data = JSON.parse(raw);
+            if (data && Array.isArray(data.customers) && data.customers.length > 0) inMemoryDB.customers = data.customers;
+            if (data && Array.isArray(data.accounts) && data.accounts.length > 0) inMemoryDB.accounts = data.accounts;
+            if (data && Array.isArray(data.transactions)) inMemoryDB.transactions = data.transactions;
+            if (data && Array.isArray(data.transfers)) inMemoryDB.transfers = data.transfers;
+            if (data && data.nextCustomerId) nextCustomerId = data.nextCustomerId;
+            if (data && data.nextAccountNumber) nextAccountNumber = data.nextAccountNumber;
+            if (data && data.nextTransactionId) nextTransactionId = data.nextTransactionId;
+            if (data && data.nextTransferId) nextTransferId = data.nextTransferId;
+        }
+    } catch (e) {
+        // ignore load errors
+    }
+}
+
+loadStore();
 
 // Simulated query executor for MySQL operations
 async function mockQuery(sql, params = []) {
@@ -289,6 +335,7 @@ async function mockQuery(sql, params = []) {
             created_at: new Date()
         };
         inMemoryDB.customers.push(newCust);
+        persistStore();
         return [{ insertId: newCust.customer_id, affectedRows: 1 }];
     }
 
@@ -302,6 +349,7 @@ async function mockQuery(sql, params = []) {
             if (email !== null && email !== undefined) cust.email = email;
             if (phone !== null && phone !== undefined) cust.phone = phone;
             if (address !== null && address !== undefined) cust.address = address;
+            persistStore();
             return [{ affectedRows: 1 }];
         }
         return [{ affectedRows: 0 }];
@@ -325,6 +373,7 @@ async function mockQuery(sql, params = []) {
         const numSet = new Set(accNums.map(n => parseInt(n, 10)));
         const before = inMemoryDB.transfers.length;
         inMemoryDB.transfers = inMemoryDB.transfers.filter(tr => !numSet.has(tr.sender_account) && !numSet.has(tr.receiver_account));
+        persistStore();
         return [{ affectedRows: before - inMemoryDB.transfers.length }];
     }
 
@@ -333,6 +382,7 @@ async function mockQuery(sql, params = []) {
         const numSet = new Set(accNums.map(n => parseInt(n, 10)));
         const before = inMemoryDB.transactions.length;
         inMemoryDB.transactions = inMemoryDB.transactions.filter(t => !numSet.has(t.account_number));
+        persistStore();
         return [{ affectedRows: before - inMemoryDB.transactions.length }];
     }
 
@@ -340,6 +390,7 @@ async function mockQuery(sql, params = []) {
         const custId = parseInt(params[0], 10);
         const before = inMemoryDB.accounts.length;
         inMemoryDB.accounts = inMemoryDB.accounts.filter(a => a.customer_id !== custId);
+        persistStore();
         return [{ affectedRows: before - inMemoryDB.accounts.length }];
     }
 
@@ -350,6 +401,7 @@ async function mockQuery(sql, params = []) {
             inMemoryDB.customers.splice(idx, 1);
             // Cascade delete empty accounts for this customer
             inMemoryDB.accounts = inMemoryDB.accounts.filter(a => a.customer_id !== custId);
+            persistStore();
             return [{ affectedRows: 1 }];
         }
         return [{ affectedRows: 0 }];
@@ -423,6 +475,7 @@ async function mockQuery(sql, params = []) {
             created_at: new Date()
         };
         inMemoryDB.accounts.push(newAcc);
+        persistStore();
         return [{ insertId: newAcc.account_number, affectedRows: 1 }];
     }
 
@@ -437,6 +490,7 @@ async function mockQuery(sql, params = []) {
             transaction_date: new Date()
         };
         inMemoryDB.transactions.unshift(newTx);
+        persistStore();
         return [{ insertId: newTx.transaction_id, affectedRows: 1 }];
     }
 
@@ -450,6 +504,7 @@ async function mockQuery(sql, params = []) {
             transfer_date: new Date()
         };
         inMemoryDB.transfers.unshift(newTr);
+        persistStore();
         return [{ insertId: newTr.transfer_id, affectedRows: 1 }];
     }
 
@@ -467,6 +522,7 @@ async function mockQuery(sql, params = []) {
                 balance_after: acc.balance,
                 transaction_date: new Date()
             });
+            persistStore();
         }
         return [{ affectedRows: acc ? 1 : 0 }];
     }
@@ -485,6 +541,7 @@ async function mockQuery(sql, params = []) {
                 balance_after: acc.balance,
                 transaction_date: new Date()
             });
+            persistStore();
         }
         return [{ affectedRows: acc ? 1 : 0 }];
     }
@@ -492,7 +549,10 @@ async function mockQuery(sql, params = []) {
     if (q.startsWith('UPDATE ACCOUNTS SET STATUS = ? WHERE ACCOUNT_NUMBER = ?')) {
         const [newStatus, accNum] = params;
         const acc = inMemoryDB.accounts.find(a => a.account_number === parseInt(accNum, 10));
-        if (acc) acc.status = newStatus;
+        if (acc) {
+            acc.status = newStatus;
+            persistStore();
+        }
         return [{ affectedRows: acc ? 1 : 0 }];
     }
 
@@ -500,7 +560,10 @@ async function mockQuery(sql, params = []) {
         const [newType, accNum] = params;
         const targetAcc = parseInt(accNum, 10);
         const tx = inMemoryDB.transactions.find(t => t.account_number === targetAcc);
-        if (tx) tx.transaction_type = newType;
+        if (tx) {
+            tx.transaction_type = newType;
+            persistStore();
+        }
         return [{ affectedRows: tx ? 1 : 0 }];
     }
 

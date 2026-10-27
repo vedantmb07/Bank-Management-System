@@ -4,53 +4,65 @@
 
 const API_BASE = '/api';
 
+async function safeRequest(endpoint, options = {}) {
+    try {
+        const res = await fetch(`${API_BASE}${endpoint}`, options);
+        let data;
+        try {
+            data = await res.json();
+        } catch (e) {
+            data = { success: false, message: `Server responded with status ${res.status}` };
+        }
+        if (!res.ok && data && !data.message) {
+            data.message = `HTTP Error ${res.status}`;
+        }
+        return data;
+    } catch (err) {
+        console.error(`[API Error] ${endpoint}:`, err);
+        return { success: false, message: err.message || 'Network communication error' };
+    }
+}
+
 const api = {
     // Dashboard & System Health
     async getStats() {
-        const res = await fetch(`${API_BASE}/dashboard/stats`);
-        return res.json();
+        return safeRequest('/dashboard/stats');
     },
 
     async getHealth() {
-        const res = await fetch(`${API_BASE}/health`);
-        return res.json();
+        return safeRequest('/health');
     },
 
     // Customers
     async getCustomers(search = '') {
-        const url = search ? `${API_BASE}/customers?search=${encodeURIComponent(search)}` : `${API_BASE}/customers`;
-        const res = await fetch(url);
-        return res.json();
+        const endpoint = search ? `/customers?search=${encodeURIComponent(search)}` : '/customers';
+        return safeRequest(endpoint);
     },
 
     async getCustomer(id) {
-        const res = await fetch(`${API_BASE}/customers/${id}`);
-        return res.json();
+        return safeRequest(`/customers/${id}`);
     },
 
     async createCustomer(data) {
-        const res = await fetch(`${API_BASE}/customers`, {
+        return safeRequest('/customers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        return res.json();
     },
 
     async updateCustomer(id, data) {
-        const res = await fetch(`${API_BASE}/customers/${id}`, {
+        return safeRequest(`/customers/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        return res.json();
     },
 
     async deleteCustomer(id) {
-        const res = await fetch(`${API_BASE}/customers/${id}`, {
+        return safeRequest(`/customers/${id}`, {
             method: 'DELETE'
         });
-        return res.json();
     },
 
     // Accounts
@@ -60,31 +72,27 @@ const api = {
         if (account_type) params.append('account_type', account_type);
         if (search) params.append('search', search);
 
-        const res = await fetch(`${API_BASE}/accounts?${params.toString()}`);
-        return res.json();
+        return safeRequest(`/accounts?${params.toString()}`);
     },
 
     async getAccount(accountNumber) {
-        const res = await fetch(`${API_BASE}/accounts/${accountNumber}`);
-        return res.json();
+        return safeRequest(`/accounts/${accountNumber}`);
     },
 
     async createAccount(data) {
-        const res = await fetch(`${API_BASE}/accounts`, {
+        return safeRequest('/accounts', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        return res.json();
     },
 
     async updateAccountStatus(accountNumber, status) {
-        const res = await fetch(`${API_BASE}/accounts/${accountNumber}/status`, {
+        return safeRequest(`/accounts/${accountNumber}/status`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status })
         });
-        return res.json();
     },
 
     // Transactions & Transfers
@@ -94,40 +102,35 @@ const api = {
         if (type) params.append('type', type);
         if (limit) params.append('limit', limit);
 
-        const res = await fetch(`${API_BASE}/transactions?${params.toString()}`);
-        return res.json();
+        return safeRequest(`/transactions?${params.toString()}`);
     },
 
     async deposit(account_number, amount) {
-        const res = await fetch(`${API_BASE}/transactions/deposit`, {
+        return safeRequest('/transactions/deposit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ account_number, amount })
         });
-        return res.json();
     },
 
     async withdraw(account_number, amount) {
-        const res = await fetch(`${API_BASE}/transactions/withdraw`, {
+        return safeRequest('/transactions/withdraw', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ account_number, amount })
         });
-        return res.json();
     },
 
     async transfer(sender_account, receiver_account, amount) {
-        const res = await fetch(`${API_BASE}/transactions/transfer`, {
+        return safeRequest('/transactions/transfer', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ sender_account, receiver_account, amount })
         });
-        return res.json();
     },
 
     async getTransfers() {
-        const res = await fetch(`${API_BASE}/transactions/transfers`);
-        return res.json();
+        return safeRequest('/transactions/transfers');
     }
 };
 

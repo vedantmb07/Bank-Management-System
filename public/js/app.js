@@ -7,7 +7,8 @@ const state = {
     currentView: 'dashboard',
     customers: [],
     accounts: [],
-    stats: null
+    stats: null,
+    viewedCustomerId: null
 };
 
 // Formatting utilities
@@ -143,6 +144,9 @@ async function openModal(id) {
 function closeModal(id) {
     const modal = document.getElementById(id);
     if (modal) modal.classList.remove('open');
+    if (id === 'customerDetailsModal') {
+        state.viewedCustomerId = null;
+    }
 }
 
 window.openModal = openModal;
@@ -156,6 +160,33 @@ window.addEventListener('click', (e) => {
         e.target.classList.remove('open');
     }
 });
+
+
+// Master UI Synchronizer: Updates all tables, counters, feeds, dropdowns, and active modals
+async function refreshAllViews() {
+    try {
+        await Promise.all([
+            loadDashboard(),
+            loadCustomers(),
+            loadAccounts(),
+            loadTransactions(),
+            loadTransfers(),
+            populateCustomerDropdown(),
+            populateAccountDropdowns()
+        ]);
+
+        // If customer details modal is open, refresh its data in real-time
+        if (state.viewedCustomerId) {
+            const custModal = document.getElementById('customerDetailsModal');
+            if (custModal && custModal.classList.contains('open')) {
+                await viewCustomerDetails(state.viewedCustomerId);
+            }
+        }
+    } catch (err) {
+        console.error('Error refreshing all data views:', err);
+    }
+}
+window.refreshAllViews = refreshAllViews;
 
 // View Navigation
 const viewTitles = {
@@ -478,14 +509,21 @@ async function loadAccounts(filters = {}) {
 async function loadTransactions(filters = {}) {
     const tbody = document.getElementById('transactionsTableBody');
     if (!tbody) return;
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px;"><i class="fas fa-spinner fa-spin"></i> Loading transactions ledger...</td></tr>`;
+    if (!tbody.hasChildNodes() || tbody.innerHTML.trim() === '') {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px;"><i class="fas fa-spinner fa-spin"></i> Loading transactions ledger...</td></tr>';
+    }
 
     try {
-        const res = await api.getTransactions(filters);
+        const txTypeFilter = document.getElementById('txTypeFilter');
+        const activeType = filters.type !== undefined ? filters.type : (txTypeFilter ? txTypeFilter.value : '');
+        const queryFilters = { ...filters };
+        if (activeType) queryFilters.type = activeType;
+
+        const res = await api.getTransactions(queryFilters);
         if (!res.success) throw new Error(res.message);
 
         if (res.data.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="empty-state"><i class="fas fa-receipt"></i><p>No transactions found</p></td></tr>`;
+            tbody.innerHTML = '<tr><td colspan="7" class="empty-state"><i class="fas fa-receipt"></i><p>No transactions found</p></td></tr>';
             return;
         }
 
@@ -503,11 +541,13 @@ async function loadTransactions(filters = {}) {
                 amountClass = '';
             }
 
+            const custName = tx.customer_name || [tx.first_name, tx.last_name].filter(Boolean).join(' ') || 'Account Holder';
+
             return `
                 <tr>
                     <td><span class="mono-val" style="color: var(--text-dim);">#${tx.transaction_id}</span></td>
                     <td><span class="mono-val" style="color: #38bdf8;">#${tx.account_number}</span></td>
-                    <td style="font-weight: 500;">${tx.customer_name}</td>
+                    <td style="font-weight: 500;">${custName}</td>
                     <td><span class="badge ${badgeClass}">${tx.transaction_type}</span></td>
                     <td><span class="mono-val ${amountClass}">${sign}${formatCurrency(tx.amount)}</span></td>
                     <td><span class="mono-val">${formatCurrency(tx.balance_after)}</span></td>
@@ -1328,8 +1368,7 @@ window.changeAccountStatus = async (accNum, newStatus) => {
         const res = await api.updateAccountStatus(accNum, newStatus);
         if (res.success) {
             showToast(res.message, 'success');
-            loadAccounts();
-            loadDashboard();
+            await refreshAllViews();
         } else {
             showToast(res.message, 'error');
         }
@@ -1340,6 +1379,7 @@ window.changeAccountStatus = async (accNum, newStatus) => {
 
 window.viewCustomerDetails = async (custId) => {
     try {
+        state.viewedCustomerId = custId;
         const res = await api.getCustomer(custId);
         if (!res.success) throw new Error(res.message);
 
@@ -1442,10 +1482,9 @@ window.handleDeleteCustomer = async (custId) => {
         const res = await api.deleteCustomer(custId);
         if (res.success) {
             showToast(res.message, 'success');
+            state.viewedCustomerId = null;
             closeModal('customerDetailsModal');
-            loadCustomers();
-            loadDashboard();
-            if (state.currentView === 'accounts') loadAccounts();
+            await refreshAllViews();
         } else {
             showToast(res.message, 'error');
         }
@@ -1680,8 +1719,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(`Customer ${first_name} ${last_name} created successfully!`, 'success');
                 closeModal('newCustomerModal');
                 e.target.reset();
-                await populateCustomerDropdown();
-                await Promise.all([loadCustomers(), loadDashboard()]);
+                await refreshAllViews();
             } else {
                 showToast(res.message, 'error');
             }
@@ -1714,8 +1752,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(`Account #${res.data.account_number} created with balance ${formatCurrency(res.data.balance)}!`, 'success');
                 closeModal('newAccountModal');
                 e.target.reset();
-                await populateAccountDropdowns();
-                await Promise.all([loadAccounts(), loadDashboard(), loadCustomers()]);
+                await refreshAllViews();
             } else {
                 showToast(res.message, 'error');
             }
@@ -1747,13 +1784,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(res.message, 'success');
                 closeModal('depositModal');
                 e.target.reset();
-                await populateAccountDropdowns();
-                await Promise.all([
-                    loadDashboard(),
-                    loadAccounts(),
-                    state.currentView === 'transactions' ? loadTransactions() : Promise.resolve(),
-                    loadCustomers()
-                ]);
+                await refreshAllViews();
             } else {
                 showToast(res.message, 'error');
             }
@@ -1785,13 +1816,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(res.message, 'success');
                 closeModal('withdrawModal');
                 e.target.reset();
-                await populateAccountDropdowns();
-                await Promise.all([
-                    loadDashboard(),
-                    loadAccounts(),
-                    state.currentView === 'transactions' ? loadTransactions() : Promise.resolve(),
-                    loadCustomers()
-                ]);
+                await refreshAllViews();
             } else {
                 showToast(res.message, 'error');
             }
@@ -1829,14 +1854,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast(res.message, 'success');
                 closeModal('transferModal');
                 e.target.reset();
-                await populateAccountDropdowns();
-                await Promise.all([
-                    loadDashboard(),
-                    loadAccounts(),
-                    loadTransfers(),
-                    loadTransactions(),
-                    loadCustomers()
-                ]);
+                await refreshAllViews();
             } else {
                 showToast(res.message, 'error');
             }
@@ -1862,11 +1880,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.success) {
                 showToast(`Customer ${first_name} ${last_name} updated successfully!`, 'success');
                 closeModal('editCustomerModal');
-                loadCustomers();
-                loadDashboard();
-                if (document.getElementById('customerDetailsModal')?.classList.contains('open')) {
-                    viewCustomerDetails(id);
-                }
+                await refreshAllViews();
             } else {
                 showToast(res.message, 'error');
             }
